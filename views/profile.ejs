@@ -1,0 +1,22 @@
+<%- include('partials/header', { title: 'My profile' }) %>
+
+<h1 class="mt-0">My profile</h1>
+
+<div class="card" style="max-width:420px;">
+  <p><strong><%= player.name %></strong><br><span class="muted"><%= player.email %></span></p>
+
+  <% if (message) { %><div class="success-box"><%= message %></div><% } %>
+
+  <form class="stacked" method="POST" action="/profile">
+    <label>Handicap Index
+      <input type="number" step="0.1" name="handicapIndex" value="<%= player.handicap_index %>" required>
+    </label>
+    <button type="submit">Update</button>
+  </form>
+  <p class="muted" style="font-size:0.85rem;">
+    Keep this in sync with your official Handicap Index — the app uses it to work out your
+    Course Handicap automatically for each competition's course.
+  </p>
+</div>
+
+<%- include('partials/footer') %>

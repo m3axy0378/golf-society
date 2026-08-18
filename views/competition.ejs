@@ -1,0 +1,88 @@
+<%- include('partials/header', { title: comp.name }) %>
+
+<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;">
+  <div>
+    <h1 class="mt-0"><%= comp.name %></h1>
+    <p class="muted" style="margin-top:-0.5rem;">
+      <%= new Date(comp.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+      · <%= comp.course_name %> (<%= comp.tee_name %> tees, par <%= comp.course_par %>, CR <%= comp.course_rating.toFixed(1) %> / SR <%= comp.slope_rating %>)
+      · Format: <strong><%= FORMAT_LABELS[comp.format] %></strong>
+    </p>
+  </div>
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <span class="badge <%= comp.status === 'closed' ? 'closed' : '' %>"><%= comp.status === 'open' ? 'Open for entry' : 'Closed' %></span>
+    <% if (currentPlayer.is_admin) { %>
+      <form method="POST" action="/admin/competitions/<%= comp.id %>/toggle-status" class="inline-form">
+        <button type="submit" class="btn-secondary"><%= comp.status === 'open' ? 'Close competition' : 'Reopen' %></button>
+      </form>
+    <% } %>
+  </div>
+</div>
+
+<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+
+<% if (comp.status === 'open') { %>
+  <div class="card">
+    <h2 class="mt-0"><%= myRound ? 'Update your round' : 'Enter your round' %></h2>
+    <p class="muted" style="margin-top:-0.5rem;font-size:0.88rem;">
+      Your Handicap Index right now is <strong><%= currentPlayer.handicap_index %></strong>
+      (update it on <a href="/profile">your profile</a> if it's changed).
+      Your Course Handicap for this round will be calculated automatically.
+    </p>
+    <form method="POST" action="/competitions/<%= comp.id %>/score">
+      <div class="holes-grid">
+        <% holes.forEach(h => {
+          const prev = myHoleScores.find(s => s.hole_number === h.hole_number);
+        %>
+          <div class="hole-box">
+            <label>Hole <%= h.hole_number %></label>
+            <input type="number" min="1" max="20" name="hole_<%= h.hole_number %>" value="<%= prev ? prev.strokes : '' %>" required>
+            <div class="par">Par <%= h.par %> · SI <%= h.stroke_index %></div>
+          </div>
+        <% }) %>
+      </div>
+      <button type="submit"><%= myRound ? 'Update round' : 'Save round' %></button>
+    </form>
+  </div>
+<% } else if (myRound) { %>
+  <div class="card">
+    <h2 class="mt-0">Your round</h2>
+    <p>Gross <strong><%= myRound.gross_total %></strong> · Net <strong><%= myRound.net_total %></strong> · Stableford <strong><%= myRound.stableford_points %></strong> pts (Course Hcp <%= myRound.course_handicap %>)</p>
+  </div>
+<% } %>
+
+<div class="card">
+  <h2 class="mt-0">Leaderboard</h2>
+  <% if (ranked.length === 0) { %>
+    <p class="muted">No scores entered yet.</p>
+  <% } else { %>
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Player</th>
+          <th class="num">Gross</th>
+          <th class="num">Course Hcp</th>
+          <th class="num">Net</th>
+          <th class="num">Points</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% ranked.forEach(r => { %>
+          <tr class="<%= r.player_id === currentPlayer.id ? 'me' : '' %> <%= r.rank === 1 ? 'rank-1' : '' %>">
+            <td><%= r.rank %></td>
+            <td><%= r.player_name %></td>
+            <td class="num" style="<%= comp.format === 'gross_stroke' ? 'font-weight:700' : '' %>"><%= r.gross_total %></td>
+            <td class="num"><%= r.course_handicap %></td>
+            <td class="num" style="<%= comp.format === 'net_stroke' ? 'font-weight:700' : '' %>"><%= r.net_total %></td>
+            <td class="num" style="<%= comp.format === 'stableford' ? 'font-weight:700' : '' %>"><%= r.stableford_points %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<a class="muted" href="/dashboard">&larr; Back to all competitions</a>
+
+<%- include('partials/footer') %>

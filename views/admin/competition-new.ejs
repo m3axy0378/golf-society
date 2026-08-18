@@ -1,0 +1,35 @@
+<%- include('../partials/header', { title: 'New competition' }) %>
+
+<h1 class="mt-0">New competition</h1>
+<% if (courseAdded) { %><div class="success-box">Course saved. Now set up the competition.</div><% } %>
+<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+
+<div class="card" style="max-width:520px;">
+  <% if (courses.length === 0) { %>
+    <p class="muted">You'll need to <a href="/admin/courses/new">add a course</a> first.</p>
+  <% } else { %>
+    <form class="stacked" method="POST" action="/admin/competitions">
+      <label>Competition name <input type="text" name="name" placeholder="e.g. August Medal" required></label>
+      <label>Date <input type="date" name="compDate" required></label>
+      <label>Course
+        <select name="courseId" required>
+          <% courses.forEach(c => { %>
+            <option value="<%= c.id %>"><%= c.name %> (<%= c.tee_name %> tees, par <%= c.par %>)</option>
+          <% }) %>
+        </select>
+      </label>
+      <label>Scoring format
+        <select name="format" required>
+          <option value="stableford">Stableford</option>
+          <option value="net_stroke">Stroke play (net)</option>
+          <option value="gross_stroke">Stroke play (gross)</option>
+        </select>
+      </label>
+      <button type="submit">Create competition</button>
+    </form>
+  <% } %>
+</div>
+
+<p><a class="muted" href="/admin/courses/new">+ Add another course</a></p>
+
+<%- include('../partials/footer') %>

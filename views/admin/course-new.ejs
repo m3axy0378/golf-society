@@ -1,0 +1,64 @@
+<%- include('../partials/header', { title: 'Add a course' }) %>
+
+<h1 class="mt-0">Add a course</h1>
+<% if (welcome) { %>
+  <div class="success-box">Society created! Now add the first course your society plays — you can add more any time.</div>
+<% } %>
+<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+
+<div class="card" style="max-width:640px;">
+  <form class="stacked" method="POST" action="/admin/courses" id="course-form">
+    <div class="grid-2">
+      <label>Course name <input type="text" name="name" required></label>
+      <label>Tee <input type="text" name="teeName" value="White" required></label>
+    </div>
+    <div class="grid-2">
+      <label>Course Rating <input type="number" step="0.1" name="courseRating" placeholder="e.g. 70.2" required></label>
+      <label>Slope Rating <input type="number" name="slopeRating" placeholder="e.g. 128" required></label>
+    </div>
+    <label>Number of holes
+      <select name="holesCount" id="holesCount">
+        <option value="18" selected>18</option>
+        <option value="9">9</option>
+      </select>
+    </label>
+
+    <h3>Hole-by-hole par &amp; stroke index</h3>
+    <p class="muted" style="font-size:0.85rem;margin-top:-0.5rem;">
+      Stroke index is how the holes are ranked for difficulty (1 = hardest, gets handicap strokes first). You'll find both on the course scorecard.
+    </p>
+    <div class="holes-grid">
+      <% for (let i = 1; i <= 18; i++) { %>
+        <div class="hole-box hole-row" data-hole="<%= i %>">
+          <label>Hole <%= i %></label>
+          <input type="number" min="3" max="6" name="par_<%= i %>" placeholder="Par" required>
+          <input type="number" min="1" max="18" name="si_<%= i %>" placeholder="SI" required style="margin-top:0.25rem;">
+        </div>
+      <% } %>
+    </div>
+
+    <button type="submit">Save course &amp; continue</button>
+  </form>
+</div>
+
+<script>
+  const select = document.getElementById('holesCount');
+  function applyHoleCount() {
+    const n = parseInt(select.value, 10);
+    document.querySelectorAll('.hole-row').forEach((row) => {
+      const hole = parseInt(row.dataset.hole, 10);
+      const inputs = row.querySelectorAll('input');
+      if (hole > n) {
+        row.style.display = 'none';
+        inputs.forEach((inp) => { inp.required = false; });
+      } else {
+        row.style.display = '';
+        inputs.forEach((inp) => { inp.required = true; });
+      }
+    });
+  }
+  select.addEventListener('change', applyHoleCount);
+  applyHoleCount();
+</script>
+
+<%- include('../partials/footer') %>

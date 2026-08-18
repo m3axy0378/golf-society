@@ -1,0 +1,37 @@
+<%- include('partials/header', { title: 'Season standings' }) %>
+
+<h1 class="mt-0">Season standings</h1>
+<p class="muted" style="margin-top:-0.75rem;">
+  An Order of Merit across all <%= competitionsCount %> competition<%= competitionsCount === 1 ? '' : 's' %> so far.
+  Each competition is scored on its own format, then players are ranked and awarded points (1st place gets the most,
+  last place gets 1) — so results are comparable even when the course or format changes month to month.
+</p>
+
+<div class="card">
+  <% if (standings.length === 0) { %>
+    <p class="muted">No results yet — once a competition has scores, standings will appear here.</p>
+  <% } else { %>
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Player</th>
+          <th class="num">Points</th>
+          <th class="num">Played</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% standings.forEach((s, i) => { %>
+          <tr class="<%= s.player_id === currentPlayer.id ? 'me' : '' %> <%= i === 0 ? 'rank-1' : '' %>">
+            <td><%= i + 1 %></td>
+            <td><%= s.player_name %></td>
+            <td class="num"><%= s.totalPoints %></td>
+            <td class="num"><%= s.competitionsPlayed %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

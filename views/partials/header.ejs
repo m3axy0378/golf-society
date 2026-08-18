@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title + ' · ' + societyName : societyName %></title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/dashboard">⛳ <%= societyName %></a>
+    <% if (currentPlayer) { %>
+      <nav class="topnav">
+        <a href="/dashboard">Competitions</a>
+        <a href="/season">Season</a>
+        <a href="/profile">My Profile</a>
+        <% if (currentPlayer.is_admin) { %>
+          <a href="/admin/players">Admin</a>
+        <% } %>
+        <form method="POST" action="/logout" class="inline-form">
+          <button type="submit" class="link-button">Log out</button>
+        </form>
+      </nav>
+    <% } %>
+  </header>
+  <main class="container">

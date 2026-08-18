@@ -1,0 +1,30 @@
+<%- include('../partials/header', { title: 'Admin · Courses' }) %>
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+  <h1 class="mt-0">Courses</h1>
+  <a class="btn" href="/admin/courses/new">+ Add course</a>
+</div>
+
+<div class="card">
+  <% if (courses.length === 0) { %>
+    <p class="muted">No courses added yet.</p>
+  <% } else { %>
+    <table>
+      <thead><tr><th>Course</th><th>Tees</th><th class="num">Par</th><th class="num">CR</th><th class="num">SR</th><th class="num">Holes</th></tr></thead>
+      <tbody>
+        <% courses.forEach(c => { %>
+          <tr>
+            <td><%= c.name %></td>
+            <td class="muted"><%= c.tee_name %></td>
+            <td class="num"><%= c.par %></td>
+            <td class="num"><%= c.course_rating.toFixed(1) %></td>
+            <td class="num"><%= c.slope_rating %></td>
+            <td class="num"><%= c.holes_count %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('../partials/footer') %>

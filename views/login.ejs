@@ -1,0 +1,18 @@
+<%- include('partials/header', { title: 'Log in' }) %>
+
+<div class="card" style="max-width:400px;margin:2rem auto 0;">
+  <h1>Log in</h1>
+  <% if (error) { %><div class="error-box"><%= error %></div><% } %>
+  <form class="stacked" method="POST" action="/login">
+    <label>Email
+      <input type="email" name="email" required autofocus>
+    </label>
+    <label>Password
+      <input type="password" name="password" required>
+    </label>
+    <button type="submit">Log in</button>
+  </form>
+  <p class="muted" style="margin-top:1rem;font-size:0.85rem;">Don't have a login? Ask your society admin to add you.</p>
+</div>
+
+<%- include('partials/footer') %>
