@@ -12,6 +12,13 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.set('trust proxy', 1); // needed behind Vercel's proxy for secure cookies
 
+// Safe fallbacks so error pages can always render, even if the per-request
+// middleware below never gets a chance to run (e.g. the database is down
+// before res.locals gets set). Express falls back to app.locals when
+// res.locals doesn't have a key.
+app.locals.currentPlayer = null;
+app.locals.societyName = 'Golf Society';
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
