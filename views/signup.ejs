@@ -1,0 +1,25 @@
+<%- include('partials/header', { title: 'Sign up' }) %>
+
+<div class="card" style="max-width:400px;margin:2rem auto 0;">
+  <img src="/img/tee-league-icon-navy.svg" alt="" width="40" height="40" style="display:block;margin:0 auto 0.75rem;">
+  <h1 class="center">Create your account</h1>
+  <% if (error) { %><div class="error-box"><%= error %></div><% } %>
+  <form class="stacked" method="POST" action="/signup">
+    <label>Name
+      <input type="text" name="name" value="<%= name %>" required autofocus>
+    </label>
+    <label>Email
+      <input type="email" name="email" value="<%= email %>" required>
+    </label>
+    <label>Password
+      <input type="password" name="password" required minlength="8">
+    </label>
+    <label>Confirm password
+      <input type="password" name="confirmPassword" required minlength="8">
+    </label>
+    <button type="submit">Sign up</button>
+  </form>
+  <p class="muted" style="margin-top:1rem;font-size:0.85rem;">Already have a login? <a href="/login">Log in</a></p>
+</div>
+
+<%- include('partials/footer') %>

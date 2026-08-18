@@ -78,6 +78,7 @@ app.get('/', (req, res) => {
 
 app.use('/', require('./routes/setup'));
 app.use('/', require('./routes/auth'));
+app.use('/', require('./routes/signup'));
 app.use('/', require('./routes/main'));
 app.use('/admin', require('./routes/admin'));
 
