@@ -1,0 +1,13 @@
+{
+  "name": "The Tee League",
+  "short_name": "Tee League",
+  "description": "Golf society competitions, scoring and season standings.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#071a2b",
+  "theme_color": "#071a2b",
+  "icons": [
+    { "src": "/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
+  ]
+}

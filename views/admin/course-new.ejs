@@ -7,14 +7,30 @@
 <% if (error) { %><div class="error-box"><%= error %></div><% } %>
 
 <div class="card" style="max-width:640px;">
+  <% if (typeof ukCourses !== 'undefined' && ukCourses.length) { %>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.92rem;margin-bottom:0.3rem;">Prefill from a UK course (optional)</label>
+      <select id="uk-course-picker" style="display:block;width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;background:var(--color-white);color:var(--text);">
+        <option value="">— Choose a course to prefill —</option>
+        <% ukCourses.forEach((c, i) => { %>
+          <option value="<%= i %>"><%= c.name %> (<%= c.region %>)</option>
+        <% }) %>
+      </select>
+      <p class="muted" style="font-size:0.85rem;margin-top:0.5rem;margin-bottom:0;">
+        Fills in the fields below from published scorecard data. Everything stays editable —
+        please double check ratings, slope and stroke indexes against your society's actual tee before saving,
+        as clubs revise these from time to time.
+      </p>
+    </div>
+  <% } %>
   <form class="stacked" method="POST" action="/admin/courses" id="course-form">
     <div class="grid-2">
-      <label>Course name <input type="text" name="name" required></label>
-      <label>Tee <input type="text" name="teeName" value="White" required></label>
+      <label>Course name <input type="text" name="name" id="field-name" required></label>
+      <label>Tee <input type="text" name="teeName" id="field-teeName" value="White" required></label>
     </div>
     <div class="grid-2">
-      <label>Course Rating <input type="number" step="0.1" name="courseRating" placeholder="e.g. 70.2" required></label>
-      <label>Slope Rating <input type="number" name="slopeRating" placeholder="e.g. 128" required></label>
+      <label>Course Rating <input type="number" step="0.1" name="courseRating" id="field-courseRating" placeholder="e.g. 70.2" required></label>
+      <label>Slope Rating <input type="number" name="slopeRating" id="field-slopeRating" placeholder="e.g. 128" required></label>
     </div>
     <label>Number of holes
       <select name="holesCount" id="holesCount">
@@ -59,6 +75,28 @@
   }
   select.addEventListener('change', applyHoleCount);
   applyHoleCount();
+
+  <% if (typeof ukCourses !== 'undefined' && ukCourses.length) { %>
+    const UK_COURSES = <%- JSON.stringify(ukCourses) %>;
+    const picker = document.getElementById('uk-course-picker');
+    picker.addEventListener('change', () => {
+      if (picker.value === '') return;
+      const course = UK_COURSES[parseInt(picker.value, 10)];
+
+      document.getElementById('field-name').value = course.name;
+      document.getElementById('field-teeName').value = course.teeName;
+      document.getElementById('field-courseRating').value = course.courseRating;
+      document.getElementById('field-slopeRating').value = course.slopeRating;
+      select.value = '18';
+      applyHoleCount();
+
+      course.holes.forEach((hole, idx) => {
+        const n = idx + 1;
+        document.querySelector(`input[name="par_${n}"]`).value = hole.par;
+        document.querySelector(`input[name="si_${n}"]`).value = hole.si;
+      });
+    });
+  <% } %>
 </script>
 
 <%- include('../partials/footer') %>

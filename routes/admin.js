@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const db = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const { requireAdmin } = require('../lib/authMiddleware');
+const { UK_COURSES } = require('../lib/ukCourses');
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -83,7 +84,7 @@ router.get(
 );
 
 router.get('/courses/new', (req, res) => {
-  res.render('admin/course-new', { error: null, welcome: req.query.welcome === '1', holesCount: 18 });
+  res.render('admin/course-new', { error: null, welcome: req.query.welcome === '1', holesCount: 18, ukCourses: UK_COURSES });
 });
 
 router.post(
@@ -108,6 +109,7 @@ router.post(
         error: `Please check every field: course name/rating/slope are required, each hole needs a par (3-6), and the stroke indexes must be a full ${n}-hole set (1-${n}, no repeats).`,
         welcome: false,
         holesCount: n,
+        ukCourses: UK_COURSES,
       });
     }
 
