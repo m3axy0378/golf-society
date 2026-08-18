@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Tee League">
+  <rect width="120" height="120" rx="22" fill="#071A2B"/>
+  <path d="M60 22 L92 46 L82 84 L38 84 L28 46 Z" fill="none" stroke="#C9A24A" stroke-width="7" stroke-linejoin="round"/>
+  <line x1="60" y1="40" x2="60" y2="76" stroke="#C9A24A" stroke-width="7" stroke-linecap="round"/>
+  <path d="M60 40 L80 50 L60 60 Z" fill="#C9A24A"/>
+  <path d="M50 66 C43 73 36 78 33 88" stroke="#C9A24A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M70 66 C77 73 84 78 87 88" stroke="#C9A24A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

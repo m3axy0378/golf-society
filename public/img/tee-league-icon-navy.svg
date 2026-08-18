@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="Tee League emblem">
+  <path d="M60 12 L100 42 L88 90 L32 90 L20 42 Z" stroke="#071A2B" stroke-width="6" stroke-linejoin="round"/>
+  <line x1="60" y1="34" x2="60" y2="82" stroke="#071A2B" stroke-width="6" stroke-linecap="round"/>
+  <path d="M60 34 L88 48 L60 62 Z" fill="#071A2B"/>
+  <path d="M46 70 C36 80 26 86 22 100 C20 107 28 110 34 104" stroke="#071A2B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M74 70 C84 80 94 86 98 100 C100 107 92 110 86 104" stroke="#071A2B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

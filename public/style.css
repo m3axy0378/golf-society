@@ -1,61 +1,138 @@
+/* ==========================================================================
+   Tee League design tokens
+   Centralised colour + type tokens per the Tee League brand guidelines
+   (deep navy + metallic gold, supported by white/off-white and restrained
+   blue/green accents). Change the palette here, not by hard-coding colours
+   throughout the stylesheet.
+   ========================================================================== */
 :root {
-  --green: #1f7a3f;
-  --green-dark: #145128;
-  --bg: #f5f7f4;
-  --card: #ffffff;
-  --text: #1b1f1c;
-  --muted: #6b7570;
-  --border: #e1e6e0;
-  --gold: #b8860b;
-  --danger: #b3261e;
+  /* Brand palette */
+  --color-navy: #071a2b;
+  --color-navy-2: #10263b;
+  --color-gold: #c9a24a;
+  --color-gold-light: #e0c47a;
+  --color-white: #ffffff;
+  --color-off-white: #f5f3ee;
+  --color-blue: #214f9b;
+  --color-sky: #a9c7e8;
+  --color-green: #0d5c46;
+  --color-forest: #123d2e;
+  --color-danger: #a63a2f;
+
+  /* Text on dark (navy) surfaces */
+  --text-primary: #ffffff;
+  --text-secondary: #d7dee6;
+  --border-subtle: rgba(255, 255, 255, 0.14);
+  --focus-ring: #c9a24a;
+
+  /* Applied tokens: this app uses navy for the header/nav/footer "frame"
+     and a light, off-white content area so dense score tables stay easy
+     to read, with gold reserved for primary actions, active state and
+     key numbers. */
+  --bg: var(--color-off-white);
+  --card: var(--color-white);
+  --text: #12202f;
+  --muted: #5b6b7a;
+  --border: rgba(7, 26, 43, 0.12);
   --radius: 10px;
+
+  --font-heading: "Gotham", "Inter", Arial, Helvetica, sans-serif;
+  --font-body: "Inter", Arial, Helvetica, sans-serif;
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-body);
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
 }
 
-a { color: var(--green-dark); }
+a { color: var(--color-blue); }
 
+h1, h2, h3, .brand, .logo-wordmark {
+  font-family: var(--font-heading);
+}
+
+/* ---- Header / navigation --------------------------------------------- */
 .topbar {
-  background: var(--green);
-  color: white;
+  background: var(--color-navy);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.9rem 1.25rem;
   flex-wrap: wrap;
   gap: 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .brand {
-  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--text-primary);
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
   text-decoration: none;
+}
+
+.brand-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.logo-wordmark {
+  text-transform: uppercase;
+}
+.logo-wordmark .accent { color: var(--color-gold); }
+
+.society-name {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
 }
 
 .topnav {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.35rem;
   flex-wrap: wrap;
 }
 
 .topnav a, .topnav .link-button {
-  color: white;
+  color: var(--text-secondary);
   text-decoration: none;
-  opacity: 0.9;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding-bottom: 0.2rem;
+  border-bottom: 2px solid transparent;
+  transition: color 180ms ease, border-color 180ms ease;
 }
 
-.topnav a:hover, .topnav .link-button:hover { opacity: 1; text-decoration: underline; }
+.topnav a:hover, .topnav .link-button:hover {
+  color: var(--text-primary);
+  text-decoration: none;
+  border-bottom-color: var(--color-gold);
+}
+
+.topnav a.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--color-gold);
+}
 
 .inline-form { display: inline; }
 
@@ -73,6 +150,7 @@ a { color: var(--green-dark); }
   padding: 1.5rem 1rem 3rem;
 }
 
+/* ---- Cards -------------------------------------------------------------- */
 .card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -81,33 +159,41 @@ a { color: var(--green-dark); }
   margin-bottom: 1.25rem;
 }
 
-h1 { font-size: 1.6rem; margin-top: 0; }
-h2 { font-size: 1.25rem; }
-h3 { font-size: 1.05rem; }
+h1 { font-size: 1.6rem; margin-top: 0; color: var(--color-navy); }
+h2 { font-size: 1.25rem; color: var(--color-navy); }
+h3 { font-size: 1.05rem; color: var(--color-navy); }
 
 .muted { color: var(--muted); }
 
+/* ---- Badges --------------------------------------------------------------
+   Small uppercase labels, restrained letter spacing, brand colours. */
 .badge {
   display: inline-block;
-  padding: 0.15rem 0.6rem;
+  padding: 0.15rem 0.65rem;
   border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  background: #e7f3ea;
-  color: var(--green-dark);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #e7efe9;
+  color: var(--color-green);
 }
-.badge.closed { background: #f2e8e6; color: var(--danger); }
-.badge.admin { background: #fdf1d6; color: var(--gold); }
+.badge.closed { background: #f3e7e4; color: var(--color-danger); }
+.badge.admin { background: #f7edd8; color: #8a6a1f; }
 
+/* ---- Tables --------------------------------------------------------------
+   Navy base for header cells, gold for important / selected numbers. */
 table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
 th, td { text-align: left; padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
-th { color: var(--muted); font-weight: 600; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.02em; }
+th { color: var(--color-navy); font-weight: 700; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.05em; }
 tr:last-child td { border-bottom: none; }
-tr.me { background: #f0f8f2; }
+tr.me { background: #faf5e8; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
-.rank-1 td:first-child { font-weight: 700; color: var(--gold); }
+.rank-1 td:first-child { font-weight: 700; color: var(--color-gold); }
 
+/* ---- Forms / inputs ------------------------------------------------------
+   Subtle border, gold focus ring, per brand spec. */
 form.stacked label { display: block; margin-bottom: 1rem; font-size: 0.92rem; }
 form.stacked input, form.stacked select {
   display: block;
@@ -117,38 +203,54 @@ form.stacked input, form.stacked select {
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 1rem;
+  background: var(--color-white);
+  color: var(--text);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+form.stacked input:focus, form.stacked select:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px rgba(201, 162, 74, 0.25);
 }
 
+/* ---- Buttons ---------------------------------------------------------
+   Primary CTA: gold fill, navy text. Secondary: navy/white outline.
+   Rounded but not pill-shaped, for a premium/athletic feel. */
 button, .btn {
-  background: var(--green);
-  color: white;
+  background: var(--color-gold);
+  color: var(--color-navy);
   border: none;
   border-radius: 8px;
   padding: 0.65rem 1.2rem;
-  font-size: 0.98rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
   cursor: pointer;
   text-decoration: none;
   display: inline-block;
+  transition: background 180ms ease, transform 180ms ease;
 }
-button:hover, .btn:hover { background: var(--green-dark); }
-.btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
-.btn-secondary:hover { background: #f2f2f2; }
-.btn-danger { background: white; color: var(--danger); border: 1px solid var(--danger); }
+button:hover, .btn:hover { background: var(--color-gold-light); }
+button:focus-visible, .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(201, 162, 74, 0.35); }
+
+.btn-secondary { background: transparent; color: var(--color-navy); border: 1px solid var(--color-navy); }
+.btn-secondary:hover { background: var(--color-navy); color: var(--text-primary); }
+
+.btn-danger { background: white; color: var(--color-danger); border: 1px solid var(--color-danger); }
+.btn-danger:hover { background: var(--color-danger); color: white; }
 
 .error-box {
-  background: #fbeceb;
-  color: var(--danger);
-  border: 1px solid #f0c9c6;
+  background: #f6e9e6;
+  color: var(--color-danger);
+  border: 1px solid #e5c7c0;
   padding: 0.8rem 1rem;
   border-radius: 8px;
   margin-bottom: 1rem;
   font-size: 0.92rem;
 }
 .success-box {
-  background: #eaf6ec;
-  color: var(--green-dark);
-  border: 1px solid #cfe9d3;
+  background: #e9f1eb;
+  color: var(--color-green);
+  border: 1px solid #c9dccd;
   padding: 0.8rem 1rem;
   border-radius: 8px;
   margin-bottom: 1rem;
@@ -177,6 +279,11 @@ button:hover, .btn:hover { background: var(--green-dark); }
   font-size: 1.05rem;
   margin-top: 0.25rem;
 }
+.hole-box input:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px rgba(201, 162, 74, 0.25);
+}
 .hole-box .par { font-size: 0.7rem; color: var(--muted); }
 
 .list-plain { list-style: none; padding: 0; margin: 0; }
@@ -196,3 +303,15 @@ button:hover, .btn:hover { background: var(--green-dark); }
 
 .center { text-align: center; }
 .mt-0 { margin-top: 0; }
+
+/* ---- Footer ------------------------------------------------------------- */
+.site-footer {
+  background: var(--color-navy);
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 1.25rem 1rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  margin-top: 2rem;
+}
+.site-footer .accent { color: var(--color-gold); }

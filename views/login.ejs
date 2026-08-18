@@ -1,7 +1,8 @@
 <%- include('partials/header', { title: 'Log in' }) %>
 
 <div class="card" style="max-width:400px;margin:2rem auto 0;">
-  <h1>Log in</h1>
+  <img src="/img/tee-league-icon-navy.svg" alt="" width="40" height="40" style="display:block;margin:0 auto 0.75rem;">
+  <h1 class="center">Log in</h1>
   <% if (error) { %><div class="error-box"><%= error %></div><% } %>
   <form class="stacked" method="POST" action="/login">
     <label>Email

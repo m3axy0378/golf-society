@@ -17,7 +17,7 @@
           <td class="muted"><%= p.email %></td>
           <td class="num">
             <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/handicap" style="display:flex;gap:0.4rem;justify-content:flex-end;">
-              <input type="number" step="0.1" name="handicapIndex" value="<%= p.handicap_index %>" style="width:70px;padding:0.25rem 0.4rem;border:1px solid #e1e6e0;border-radius:6px;">
+              <input type="number" step="0.1" name="handicapIndex" value="<%= p.handicap_index %>" style="width:70px;padding:0.25rem 0.4rem;border:1px solid var(--border);border-radius:6px;">
               <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Save</button>
             </form>
           </td>
