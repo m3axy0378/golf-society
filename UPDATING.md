@@ -1,32 +1,31 @@
 # Making changes going forward
 
-The project is now a git repository (`git log` shows the initial commit), which makes changes trackable and — once it's on GitHub — deployable automatically. Here's the workflow.
+The project is now a git repository (`git log` shows the initial commits), and it's deployed to Vercel (project `golf-society` in the `Tee League` team). Here's how to keep making changes.
 
-## One-time: put it on GitHub
+## The easy way: ask me, I redeploy directly
 
-1. Go to [github.com/new](https://github.com/new) and create an empty repository (no README/license — this project already has those), e.g. `golf-society`.
+Since I'm connected to your Vercel account for this project, the simplest loop is:
+
+1. Tell me what you want changed (in this conversation, or a new one — just mention the golf society app).
+2. I make the edit, test it against a real Postgres the same way I tested the original build, and redeploy straight to Vercel.
+3. You refresh the live URL.
+
+No terminal, no git required on your end for this path. The one thing I can't do myself is anything that needs your Vercel account directly — connecting the database, adding environment variables, custom domains, billing — those need you in the dashboard (see README.md's "Finishing the Vercel setup").
+
+## The GitHub way: auto-deploy on push
+
+If you'd rather changes deploy automatically whenever code is pushed (useful if you start editing things yourself, or want a review step), put the repo on GitHub and link it to the Vercel project:
+
+1. Go to [github.com/new](https://github.com/new) and create an empty repository, e.g. `golf-society`.
 2. In a terminal, inside this project folder:
    ```bash
    git remote add origin git@github.com:YOUR-USERNAME/golf-society.git
    git push -u origin main
    ```
-   (Use the HTTPS URL GitHub gives you instead if you haven't set up an SSH key — it'll prompt you to log in.)
+3. In the Vercel dashboard, open the `golf-society` project → Settings → Git → connect it to that GitHub repo (or ask me to do this via `create_git_project` once the repo exists).
 
-That's it — from now on, `git push` sends your latest changes to GitHub, and if your host is connected to that repo (see the README's deployment section), it redeploys automatically.
-
-## Day to day: how a change happens
-
-1. **Describe the change to me** (in this conversation, or a new one — just mention the golf society app) — e.g. "add a Texas Scramble format" or "let players see their handicap history". I'll make the edit, test it the same way I tested the original build, and hand you either the specific changed files or a fresh full copy.
-2. **Bring the change into your copy of the project.** If you're working from the GitHub repo, this is:
-   ```bash
-   git add -A
-   git commit -m "describe what changed"
-   git push
-   ```
-3. **Redeploy**, if your host doesn't already do this automatically on push — check the README's deployment section for your specific host.
-
-If you'd rather not touch a terminal at all, that's fine too — tell me the change, and I'll walk you through pasting a couple of commands, or just hand you a ready-to-run zip each time the way I did originally.
+From then on, `git push` deploys automatically — no need to ask me to redeploy.
 
 ## If you start a new conversation with me
 
-Each Cowork session gets its own private workspace, so I won't automatically remember this project's files in a brand-new session unless you re-share them (e.g. re-upload the zip, or point me at wherever you've saved it — including a connected folder on your computer, if you'd like me to keep a copy there). Once the project is on GitHub, that's the safest source of truth regardless of which session I'm in — just give me the repo and I can pick up from exactly where we left off.
+Each Cowork session gets its own private workspace, so I won't automatically remember this project's files in a brand-new session. What persists regardless of session is the live Vercel project itself (I can look it up by name/team) and, once you've done the GitHub step above, the repo. Mention "the golf society app on Vercel" and I can pick things up from there even without the original files.

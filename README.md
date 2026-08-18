@@ -2,6 +2,8 @@
 
 A small web app for running your society's monthly golf competitions — different courses every month are fully supported, because every round is scored using the real World Handicap System maths (Course Handicap is calculated from each course's Course Rating, Slope Rating and par), not just raw strokes.
 
+**Live on Vercel:** https://golf-society-tee-league.vercel.app (project `golf-society` in the `Tee League` Vercel team). See "Finishing the Vercel setup" below — it needs a database connected before it'll actually work.
+
 ## What it does
 
 - Each player has a login and a Handicap Index they keep up to date on their profile.
@@ -9,13 +11,27 @@ A small web app for running your society's monthly golf competitions — differe
 - Players enter their own hole-by-hole score after their round. The app works out their Course Handicap for that course automatically and produces gross, net and Stableford results.
 - Every competition has a leaderboard, and there's a season-long "Order of Merit" standings page that ranks players fairly across competitions even when the course or format changes — each competition awards ranking points (1st place gets the most), which are added up across the season.
 
+## Architecture
+
+This runs as an Express app deployed to Vercel as serverless functions, backed by Postgres (not SQLite — Vercel's functions don't have a persistent disk, so all data lives in a real database). Sessions are stored in a signed cookie rather than server-side, since that's what works correctly across stateless function instances.
+
+## Finishing the Vercel setup
+
+The code is deployed, but it needs two things added in the Vercel dashboard before it'll work (these need your account, so they couldn't be done automatically):
+
+1. **Connect a database.** Open the `golf-society` project on vercel.com → **Storage** tab → **Connect Database** → choose a Postgres option (Neon is Vercel's native option) → pick the free plan → Connect. This automatically adds a `DATABASE_URL` environment variable to the project.
+2. **Add a session secret.** Project → **Settings** → **Environment Variables** → add `SESSION_SECRET` with any long random string (e.g. generate one with `openssl rand -hex 32`).
+3. **Redeploy** so the new environment variables take effect — Deployments tab → latest deployment → "..." menu → Redeploy (or just ask me to redeploy once you've done steps 1–2).
+
+Once that's done, visiting the live URL will show the one-time setup page to create your society and first admin account, exactly like running it locally.
+
 ## Running it locally
 
-You'll need [Node.js](https://nodejs.org) 18 or later installed.
+You'll need [Node.js](https://nodejs.org) 18+ and a local Postgres (or a free cloud one — see above).
 
 ```bash
 npm install
-cp .env.example .env    # then edit .env and set your own SESSION_SECRET
+cp .env.example .env    # then edit .env: set DATABASE_URL and your own SESSION_SECRET
 npm start
 ```
 
@@ -24,26 +40,6 @@ Open http://localhost:3000 — since there are no players yet, you'll land on a 
 1. Add a course (Admin → Courses → Add course) — you'll need the course's Course Rating, Slope Rating, and each hole's par and stroke index, all of which are on the course's scorecard.
 2. Create a competition (Admin → New competition), picking that course and a scoring format.
 3. Add your friends as players (Admin → Players) with a starting Handicap Index and a temporary password — send them their login details.
-
-All data is stored in a single SQLite file at `db/golf-society.db`. Back that file up occasionally (or set up the automatic backups most hosts offer) — it's the only copy of your society's scores.
-
-## Deploying it so your friends can use it
-
-This app needs somewhere that (a) keeps running and (b) keeps its disk between deploys, since the database is just a file. A few options, roughly easiest-to-set-up first:
-
-**Run it on a machine you already leave on** (a home server, NAS, or old laptop) and share access with [Tailscale](https://tailscale.com) (free for personal use — gives your friends a private URL without exposing the app to the whole internet) or [ngrok](https://ngrok.com). Just `npm start` there, ideally kept alive with a process manager like `pm2` (`npm install -g pm2 && pm2 start server.js --name golf-society`).
-
-**Fly.io** — has a free allowance that includes a small persistent volume, which suits a single-file SQLite app well:
-```bash
-fly launch      # follow the prompts; say yes to a volume, mount it at /app/db
-fly volumes create golf_data --size 1   # if not created during launch
-fly deploy
-```
-Set `DB_PATH=/app/db/golf-society.db` and your `SESSION_SECRET` as Fly secrets (`fly secrets set ...`) so the database lives on the persistent volume rather than the app's ephemeral filesystem.
-
-**Railway or Render** — both are simple "connect your repo and deploy" hosts. The free/trial tiers on both have changed a lot over time and don't reliably include a persistent disk, so check current pricing before relying on one for a database file — you may need their cheapest paid tier (a couple of dollars a month) to get persistent storage. If you'd rather not deal with disks at all, the schema in `db/index.js` is plain SQL, so swapping SQLite for a free hosted Postgres (e.g. Neon or Supabase both have free tiers) is a reasonably small change if you want to go that route later.
-
-Whichever host you choose, remember to set `SESSION_SECRET` to your own random value (not the example one) and, if the host doesn't set `PORT` for you automatically, set it to whatever port they expect.
 
 ## Notes on the scoring
 
@@ -55,10 +51,11 @@ Whichever host you choose, remember to set `SESSION_SECRET` to your own random v
 ## Project structure
 
 ```
-server.js           App entry point
-db/index.js          SQLite schema + connection
+server.js           App entry point (exports the Express app; Vercel runs it as a function)
+db/index.js          Postgres schema + connection + query helpers
 lib/scoring.js        Course Handicap & Stableford maths
 lib/standings.js       Season Order of Merit calculation
+lib/asyncHandler.js    Wraps async route handlers so errors reach the error page
 routes/               setup, auth, main (competitions/scores/season), admin
 views/                EJS templates
 public/style.css       Styling

@@ -1,19 +1,17 @@
 {
   "name": "golf-society",
-  "version": "1.0.0",
-  "description": "A little web app for a golf society to run monthly competitions across different courses, with WHS-style handicapping.",
+  "version": "2.0.0",
+  "description": "A little web app for a golf society to run monthly competitions across different courses, with WHS-style handicapping. Runs on Vercel with a Postgres database.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "seed": "node db/seed.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "better-sqlite3": "^11.3.0",
     "bcryptjs": "^2.4.3",
-    "connect-sqlite3": "^0.9.15",
+    "cookie-session": "^2.1.0",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
-    "express-session": "^1.18.0"
+    "pg": "^8.13.0"
   }
 }
