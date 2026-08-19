@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const { requireLogin } = require('../lib/authMiddleware');
-const { computeRound } = require('../lib/scoring');
+const { computeRound, strokesReceivedOnHole, stablefordPointsForHole } = require('../lib/scoring');
 const { bestCountFor, updatePlayerHandicap } = require('../lib/handicap');
 const { computeSeasonStandings, rankCompetition, metricForFormat } = require('../lib/standings');
 const ukGolfApi = require('../lib/ukGolfApi');
@@ -584,7 +584,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { rows: players } = await db.query('SELECT id, name, handicap_index FROM players ORDER BY name');
     const { rows: roundRows } = await db.query(
-      `SELECT r.player_id, r.gross_total, r.submitted_at, co.course_rating, co.slope_rating
+      `SELECT r.player_id, r.gross_total, r.handicap_index_used, r.submitted_at, co.course_rating, co.slope_rating
        FROM rounds r
        JOIN courses co ON co.id = r.course_id
        JOIN competitions c ON c.id = r.competition_id
@@ -602,12 +602,22 @@ router.get(
     const handicaps = players
       .map((p) => {
         const recent = recentByPlayer.get(p.id) || [];
+        // Trend = current handicap vs. what it was going into their most
+        // recent round (handicap_index_used is the value before that round's
+        // result got folded into the rolling average).
+        let trend = null;
+        if (recent.length > 0) {
+          if (p.handicap_index < recent[0].handicap_index_used) trend = 'down';
+          else if (p.handicap_index > recent[0].handicap_index_used) trend = 'up';
+          else trend = 'flat';
+        }
         return {
           player_id: p.id,
           player_name: p.name,
           handicap_index: p.handicap_index,
           roundsCounted: recent.length,
           bestCount: recent.length > 0 ? bestCountFor(recent.length) : 0,
+          trend,
         };
       })
       .sort((a, b) => a.handicap_index - b.handicap_index);
@@ -698,6 +708,54 @@ router.get(
       TYPE_LABELS,
       FORMAT_LABELS,
     });
+  })
+);
+
+router.get(
+  '/rounds/:id/scorecard',
+  requireLogin,
+  asyncHandler(async (req, res) => {
+    const { rows: roundRows } = await db.query(
+      `SELECT r.*, p.name AS player_name, m.name AS marker_name,
+              c.name AS comp_name, c.format AS comp_format, c.comp_date,
+              co.name AS course_name, co.tee_name, co.par AS course_par, co.course_rating, co.slope_rating
+       FROM rounds r
+       JOIN players p ON p.id = r.player_id
+       LEFT JOIN players m ON m.id = r.marker_id
+       JOIN competitions c ON c.id = r.competition_id
+       JOIN courses co ON co.id = r.course_id
+       WHERE r.id = $1`,
+      [req.params.id]
+    );
+    const round = roundRows[0];
+    if (!round) return res.status(404).render('error', { message: 'Round not found.' });
+
+    const { rows: courseHoles } = await db.query(
+      'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
+      [round.course_id]
+    );
+    const { rows: holeScoreRows } = await db.query(
+      'SELECT hole_number, strokes FROM hole_scores WHERE round_id = $1 ORDER BY hole_number',
+      [round.id]
+    );
+    const scoresByHole = new Map(holeScoreRows.map((s) => [s.hole_number, s.strokes]));
+    const holesPlayed = holeScoreRows.length;
+
+    const holes = courseHoles
+      .filter((h) => scoresByHole.has(h.hole_number))
+      .map((h) => {
+        const strokes = scoresByHole.get(h.hole_number);
+        const received = strokesReceivedOnHole(round.course_handicap, h.stroke_index, holesPlayed);
+        return {
+          ...h,
+          strokes,
+          received,
+          netStrokes: strokes - received,
+          points: stablefordPointsForHole(strokes, h.par, received),
+        };
+      });
+
+    res.render('scorecard', { round, holes, FORMAT_LABELS });
   })
 );
 

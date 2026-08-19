@@ -203,6 +203,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .rank-1 td:first-child { font-weight: 700; color: var(--color-gold); }
 
+.trend-arrow { font-weight: 700; font-size: 1.05rem; }
+.trend-down { color: var(--color-green); }
+.trend-up { color: var(--color-danger); }
+
 /* ---- Leaderboard (card list, replaces a table so nothing needs to
    scroll sideways on narrow screens) --------------------------------- */
 .leaderboard-row.me { background: #faf5e8; }
@@ -393,6 +397,27 @@ button:focus-visible, .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px 
 
 .center { text-align: center; }
 .mt-0 { margin-top: 0; }
+
+/* ---- Offline score queue banner -------------------------------------- */
+.offline-banner {
+  position: fixed;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 50;
+  background: var(--color-navy);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+.offline-banner button { padding: 0.35rem 0.7rem; font-size: 0.82rem; flex-shrink: 0; }
 
 /* ---- Footer ------------------------------------------------------------- */
 .site-footer {

@@ -192,8 +192,7 @@
         </div>
       </div>
 
-      <form method="POST" action="/competitions/<%= comp.id %>/score" id="score-form"
-        onsubmit="return confirm('Save this round? Once saved you won\'t be able to change it yourself — only an admin can fix a mistake after this.');">
+      <form method="POST" action="/competitions/<%= comp.id %>/score" id="score-form">
         <input type="hidden" name="courseId" value="<%= selectedCourse.id %>">
 
         <% if (markers.length > 0) { %>
@@ -244,6 +243,37 @@
 
         <button type="submit">Save round</button>
       </form>
+
+      <script>
+        // If the request can't reach the server at all (no signal — common
+        // out on a course), the scores get saved on-device instead of just
+        // failing, and offline-queue.js retries automatically once back
+        // online — from whichever page happens to be open at the time.
+        document.getElementById('score-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!confirm('Save this round? Once saved you won\'t be able to change it yourself — only an admin can fix a mistake after this.')) return;
+
+          const form = e.target;
+          const submitBtn = form.querySelector('button[type="submit"]');
+          submitBtn.disabled = true;
+          const payload = Object.fromEntries(new FormData(form).entries());
+          const result = await window.TeeLeagueOfflineQueue.submitOrQueue({
+            action: form.action,
+            payload,
+            competitionId: <%= comp.id %>,
+            competitionName: <%- JSON.stringify(comp.name) %>,
+          });
+
+          if (result === 'submitted') {
+            window.location.href = '/competitions/<%= comp.id %>';
+          } else if (result === 'rejected') {
+            form.submit(); // a real validation error, not connectivity — show the server's error page
+          } else {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Saved on this device — will sync later';
+          }
+        });
+      </script>
     <% } else { %>
       <p class="muted">Choose which course you played above to enter your scores.</p>
     <% } %>
@@ -279,9 +309,12 @@
               %>
                 <% if (entry && entry.entry_fee_paid) { %><span class="badge">Paid</span><% } else { %><span class="muted">–</span><% } %>
               <% } %>
-              <% if (currentPlayer.is_admin) { %>
-                <div style="margin-top:0.3rem;"><a class="muted" style="font-size:0.8rem;" href="/admin/rounds/<%= r.id %>/edit">Edit</a></div>
-              <% } %>
+              <div style="margin-top:0.3rem;">
+                <a class="muted" style="font-size:0.8rem;" href="/rounds/<%= r.id %>/scorecard">Scorecard</a>
+                <% if (currentPlayer.is_admin) { %>
+                  · <a class="muted" style="font-size:0.8rem;" href="/admin/rounds/<%= r.id %>/edit">Edit</a>
+                <% } %>
+              </div>
             </div>
           </div>
           <div class="leaderboard-stats">

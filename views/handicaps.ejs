@@ -28,12 +28,22 @@
               <td><%= h.player_name %></td>
               <td class="num">
                 <% if (currentPlayer.is_admin) { %>
-                  <form class="inline-form" method="POST" action="/admin/players/<%= h.player_id %>/handicap" style="display:flex;gap:0.4rem;justify-content:flex-end;">
+                  <form class="inline-form" method="POST" action="/admin/players/<%= h.player_id %>/handicap" style="display:flex;gap:0.4rem;align-items:center;justify-content:flex-end;">
                     <input type="hidden" name="redirectTo" value="/handicaps">
+                    <% if (h.trend === 'down') { %>
+                      <span class="trend-arrow trend-down" title="Improved since their last round">&darr;</span>
+                    <% } else if (h.trend === 'up') { %>
+                      <span class="trend-arrow trend-up" title="Increased since their last round">&uarr;</span>
+                    <% } %>
                     <input type="number" step="0.1" name="handicapIndex" value="<%= h.handicap_index %>" style="width:70px;padding:0.25rem 0.4rem;border:1px solid var(--border);border-radius:6px;">
                     <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Save</button>
                   </form>
                 <% } else { %>
+                  <% if (h.trend === 'down') { %>
+                    <span class="trend-arrow trend-down" title="Improved since their last round">&darr;</span>
+                  <% } else if (h.trend === 'up') { %>
+                    <span class="trend-arrow trend-up" title="Increased since their last round">&uarr;</span>
+                  <% } %>
                   <strong><%= h.handicap_index %></strong>
                 <% } %>
               </td>

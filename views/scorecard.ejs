@@ -1,0 +1,85 @@
+<%- include('partials/header', { title: round.player_name + "'s scorecard" }) %>
+
+<div class="no-print" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;">
+  <div>
+    <h1 class="mt-0"><%= round.player_name %>'s scorecard</h1>
+    <p class="muted" style="margin-top:-0.5rem;">
+      <%= round.comp_name %> ·
+      <%= new Date(round.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+    </p>
+  </div>
+  <button type="button" class="btn-secondary" onclick="window.print()">Print / Save as PDF</button>
+</div>
+
+<div class="print-only" style="display:none;">
+  <h1 class="mt-0"><%= round.player_name %>'s scorecard</h1>
+  <p><%= round.comp_name %> · <%= new Date(round.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %></p>
+</div>
+
+<p class="muted" style="margin-top:-0.5rem;">
+  <%= round.course_name %> (<%= round.tee_name %> tees, par <%= round.course_par %>, CR <%= round.course_rating.toFixed(1) %> / SR <%= round.slope_rating %>)
+  <% if (round.marker_name) { %> · Marked by <strong><%= round.marker_name %></strong><% } %>
+</p>
+
+<div class="score-summary" style="position:static;">
+  <div>
+    <span class="sub">Course Hcp</span>
+    <strong><%= round.course_handicap %></strong>
+  </div>
+  <div>
+    <span class="sub">Gross</span>
+    <strong><%= round.gross_total %></strong>
+  </div>
+  <div>
+    <span class="sub">Net</span>
+    <strong><%= round.net_total %></strong>
+  </div>
+  <div>
+    <span class="sub">Stableford</span>
+    <strong><%= round.stableford_points %></strong>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Hole</th>
+          <th class="num">Par</th>
+          <th class="num">SI</th>
+          <th class="num">Gross</th>
+          <th class="num">Net</th>
+          <th class="num">Points</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% holes.forEach(h => { %>
+          <tr>
+            <td><%= h.hole_number %></td>
+            <td class="num"><%= h.par %></td>
+            <td class="num"><%= h.stroke_index %></td>
+            <td class="num"><%= h.strokes %></td>
+            <td class="num"><%= h.netStrokes %></td>
+            <td class="num"><%= h.points %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<a class="muted no-print" href="/competitions/<%= round.competition_id %>">&larr; Back to competition</a>
+
+<style>
+  @media print {
+    .topbar, .site-footer, .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    body, main.container { padding: 0; margin: 0; max-width: 100%; }
+    .card { border: none; box-shadow: none; padding: 0; }
+    .score-summary { background: none !important; color: #000 !important; }
+    .score-summary .sub, .score-summary strong { color: #000 !important; }
+  }
+</style>
+
+<%- include('partials/footer') %>

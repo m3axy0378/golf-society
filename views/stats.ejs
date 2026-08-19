@@ -111,12 +111,15 @@
     <ul class="list-plain">
       <% myRounds.forEach(r => { %>
         <li style="flex-direction:column;align-items:stretch;gap:0.5rem;">
-          <div>
-            <strong><%= r.comp_name %></strong>
-            <% if (r.comp_type !== 'league') { %><span class="badge"><%= TYPE_LABELS[r.comp_type] %></span><% } %>
-            <div class="muted" style="font-size:0.8rem;margin-top:0.15rem;">
-              <%= r.course_name %> · <%= new Date(r.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
+            <div>
+              <strong><%= r.comp_name %></strong>
+              <% if (r.comp_type !== 'league') { %><span class="badge"><%= TYPE_LABELS[r.comp_type] %></span><% } %>
+              <div class="muted" style="font-size:0.8rem;margin-top:0.15rem;">
+                <%= r.course_name %> · <%= new Date(r.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+              </div>
             </div>
+            <a class="muted" style="font-size:0.8rem;white-space:nowrap;" href="/rounds/<%= r.id %>/scorecard">Scorecard</a>
           </div>
           <div class="leaderboard-stats">
             <div class="stat"><span class="stat-label">Gross</span><strong><%= r.gross_total %></strong></div>
