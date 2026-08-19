@@ -95,6 +95,15 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 
+-- "The Bunker Banter" — a single society-wide chat room. No threads/rooms,
+-- just one running log everyone shares.
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Web Push subscriptions, one row per device/browser a player has enabled
 -- notifications on. Endpoint is unique per browser install, so re-subscribing
 -- the same device (e.g. after clearing site data) just updates its row.

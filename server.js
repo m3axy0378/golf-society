@@ -91,6 +91,7 @@ app.use('/', require('./routes/setup'));
 app.use('/', require('./routes/auth'));
 app.use('/', require('./routes/signup'));
 app.use('/', require('./routes/push'));
+app.use('/', require('./routes/chat'));
 app.use('/', require('./routes/main'));
 app.use('/admin', require('./routes/admin'));
 
