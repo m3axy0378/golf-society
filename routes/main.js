@@ -4,7 +4,7 @@ const asyncHandler = require('../lib/asyncHandler');
 const { requireLogin } = require('../lib/authMiddleware');
 const { computeRound } = require('../lib/scoring');
 const { bestCountFor, updatePlayerHandicap } = require('../lib/handicap');
-const { computeSeasonStandings, rankCompetition } = require('../lib/standings');
+const { computeSeasonStandings, rankCompetition, metricForFormat } = require('../lib/standings');
 const ukGolfApi = require('../lib/ukGolfApi');
 
 const router = express.Router();
@@ -613,6 +613,91 @@ router.get(
       .sort((a, b) => a.handicap_index - b.handicap_index);
 
     res.render('handicaps', { handicaps });
+  })
+);
+
+router.get(
+  '/stats',
+  requireLogin,
+  asyncHandler(async (req, res) => {
+    const playerId = req.session.playerId;
+
+    const { rows: myRounds } = await db.query(
+      `SELECT r.*, c.name AS comp_name, c.type AS comp_type, c.format AS comp_format, c.comp_date,
+              co.name AS course_name
+       FROM rounds r
+       JOIN competitions c ON c.id = r.competition_id
+       JOIN courses co ON co.id = r.course_id
+       WHERE r.player_id = $1
+       ORDER BY c.comp_date DESC, r.submitted_at DESC`,
+      [playerId]
+    );
+
+    // Chronological (oldest first) for the trend line, using every round —
+    // it's just a record of what the player's handicap actually was at the
+    // time, regardless of competition type.
+    const handicapTrend = [...myRounds]
+      .reverse()
+      .map((r) => ({ date: r.comp_date, handicapIndex: r.handicap_index_used }));
+
+    // Sprint rounds are only 9 holes, so mixing them into "best/worst" or an
+    // average against full 18-hole rounds would be comparing apples to oranges.
+    const rankedRounds = myRounds.filter((r) => r.comp_type !== 'sprint');
+    let bestRound = null;
+    let worstRound = null;
+    for (const r of rankedRounds) {
+      if (!bestRound || r.stableford_points > bestRound.stableford_points) bestRound = r;
+      if (!worstRound || r.stableford_points < worstRound.stableford_points) worstRound = r;
+    }
+    const avgPoints = rankedRounds.length
+      ? rankedRounds.reduce((sum, r) => sum + r.stableford_points, 0) / rankedRounds.length
+      : null;
+
+    // Head-to-head: every competition both this player and another player
+    // both submitted a score for, decided the same way the leaderboard
+    // itself decides a winner (the format-appropriate metric).
+    const { rows: sharedRounds } = await db.query(
+      `SELECT r.competition_id, r.player_id, r.gross_total, r.net_total, r.stableford_points,
+              c.format AS comp_format, p.name AS player_name
+       FROM rounds r
+       JOIN competitions c ON c.id = r.competition_id
+       JOIN players p ON p.id = r.player_id
+       WHERE r.competition_id IN (SELECT competition_id FROM rounds WHERE player_id = $1) AND r.player_id != $1`,
+      [playerId]
+    );
+    const myRoundsByComp = new Map(myRounds.map((r) => [r.competition_id, r]));
+    const h2hByOpponent = new Map();
+    for (const other of sharedRounds) {
+      const mine = myRoundsByComp.get(other.competition_id);
+      if (!mine) continue;
+      const entry = h2hByOpponent.get(other.player_id) || {
+        playerId: other.player_id,
+        playerName: other.player_name,
+        wins: 0,
+        losses: 0,
+        ties: 0,
+      };
+      const myMetric = metricForFormat(other.comp_format, mine);
+      const theirMetric = metricForFormat(other.comp_format, other);
+      if (myMetric < theirMetric) entry.wins += 1;
+      else if (myMetric > theirMetric) entry.losses += 1;
+      else entry.ties += 1;
+      h2hByOpponent.set(other.player_id, entry);
+    }
+    const headToHead = Array.from(h2hByOpponent.values())
+      .map((h) => ({ ...h, played: h.wins + h.losses + h.ties }))
+      .sort((a, b) => b.played - a.played || b.wins - a.wins || a.playerName.localeCompare(b.playerName));
+
+    res.render('stats', {
+      myRounds,
+      handicapTrend,
+      bestRound,
+      worstRound,
+      avgPoints,
+      headToHead,
+      TYPE_LABELS,
+      FORMAT_LABELS,
+    });
   })
 );
 

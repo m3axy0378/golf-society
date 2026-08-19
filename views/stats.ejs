@@ -1,0 +1,133 @@
+<%- include('partials/header', { title: 'My Stats' }) %>
+
+<h1 class="mt-0">My Stats</h1>
+<p class="muted" style="margin-top:-0.75rem;">
+  Your own history across every competition you've entered.
+</p>
+
+<div class="score-summary" style="position:static;">
+  <div>
+    <span class="sub">Rounds Played</span>
+    <strong><%= myRounds.length %></strong>
+  </div>
+  <div>
+    <span class="sub">Avg Points</span>
+    <strong><%= avgPoints === null ? '–' : avgPoints.toFixed(1) %></strong>
+  </div>
+  <div>
+    <span class="sub">Handicap Index</span>
+    <strong><%= currentPlayer.handicap_index %></strong>
+  </div>
+</div>
+
+<div class="card">
+  <h2 class="mt-0" style="font-size:1.05rem;">Handicap trend</h2>
+  <% if (handicapTrend.length >= 2) {
+    const vals = handicapTrend.map((p) => p.handicapIndex);
+    const minV = Math.min(...vals);
+    const maxV = Math.max(...vals);
+    const range = maxV - minV || 1;
+    const w = 600, h = 140, pad = 12;
+    const stepX = handicapTrend.length > 1 ? (w - pad * 2) / (handicapTrend.length - 1) : 0;
+    const points = handicapTrend.map((p, i) => {
+      const x = pad + i * stepX;
+      const y = pad + (h - pad * 2) * (1 - (p.handicapIndex - minV) / range);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const first = handicapTrend[0];
+    const last = handicapTrend[handicapTrend.length - 1];
+  %>
+    <svg viewBox="0 0 <%= w %> <%= h %>" preserveAspectRatio="none" style="width:100%;height:140px;display:block;">
+      <polyline points="<%= points %>" fill="none" stroke="var(--color-gold)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+    </svg>
+    <div class="muted" style="display:flex;justify-content:space-between;font-size:0.8rem;margin-top:0.4rem;">
+      <span><%= first.handicapIndex.toFixed(1) %> · <%= new Date(first.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %></span>
+      <span><%= last.handicapIndex.toFixed(1) %> · <%= new Date(last.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %></span>
+    </div>
+  <% } else { %>
+    <p class="muted" style="margin-bottom:0;">Play a few more rounds to see your handicap trend over time.</p>
+  <% } %>
+</div>
+
+<% if (bestRound || worstRound) { %>
+  <div class="grid-2">
+    <% if (bestRound) { %>
+      <div class="card">
+        <h2 class="mt-0" style="font-size:1.05rem;">Best round</h2>
+        <p class="muted" style="margin-top:-0.5rem;font-size:0.85rem;">
+          <%= bestRound.comp_name %> · <%= bestRound.course_name %> ·
+          <%= new Date(bestRound.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %>
+        </p>
+        <div class="leaderboard-stats">
+          <div class="stat"><span class="stat-label">Gross</span><strong><%= bestRound.gross_total %></strong></div>
+          <div class="stat"><span class="stat-label">Net</span><strong><%= bestRound.net_total %></strong></div>
+          <div class="stat"><span class="stat-label">Points</span><strong style="color:var(--color-gold);"><%= bestRound.stableford_points %></strong></div>
+        </div>
+      </div>
+    <% } %>
+    <% if (worstRound && worstRound.id !== bestRound.id) { %>
+      <div class="card">
+        <h2 class="mt-0" style="font-size:1.05rem;">Toughest round</h2>
+        <p class="muted" style="margin-top:-0.5rem;font-size:0.85rem;">
+          <%= worstRound.comp_name %> · <%= worstRound.course_name %> ·
+          <%= new Date(worstRound.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %>
+        </p>
+        <div class="leaderboard-stats">
+          <div class="stat"><span class="stat-label">Gross</span><strong><%= worstRound.gross_total %></strong></div>
+          <div class="stat"><span class="stat-label">Net</span><strong><%= worstRound.net_total %></strong></div>
+          <div class="stat"><span class="stat-label">Points</span><strong><%= worstRound.stableford_points %></strong></div>
+        </div>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<div class="card">
+  <h2 class="mt-0" style="font-size:1.05rem;">Head-to-head</h2>
+  <% if (headToHead.length === 0) { %>
+    <p class="muted" style="margin-bottom:0;">No shared competitions with another player yet.</p>
+  <% } else { %>
+    <ul class="list-plain">
+      <% headToHead.forEach(h => { %>
+        <li>
+          <span><%= h.playerName %></span>
+          <span style="font-size:0.9rem;">
+            <strong style="color:var(--color-green);"><%= h.wins %>W</strong>
+            &nbsp;–&nbsp;
+            <strong style="color:var(--color-danger);"><%= h.losses %>L</strong>
+            <% if (h.ties > 0) { %>&nbsp;–&nbsp;<strong class="muted"><%= h.ties %>T</strong><% } %>
+          </span>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2 class="mt-0" style="font-size:1.05rem;">Round history</h2>
+  <% if (myRounds.length === 0) { %>
+    <p class="muted" style="margin-bottom:0;">You haven't submitted a round yet.</p>
+  <% } else { %>
+    <ul class="list-plain">
+      <% myRounds.forEach(r => { %>
+        <li style="flex-direction:column;align-items:stretch;gap:0.5rem;">
+          <div>
+            <strong><%= r.comp_name %></strong>
+            <% if (r.comp_type !== 'league') { %><span class="badge"><%= TYPE_LABELS[r.comp_type] %></span><% } %>
+            <div class="muted" style="font-size:0.8rem;margin-top:0.15rem;">
+              <%= r.course_name %> · <%= new Date(r.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+            </div>
+          </div>
+          <div class="leaderboard-stats">
+            <div class="stat"><span class="stat-label">Gross</span><strong><%= r.gross_total %></strong></div>
+            <div class="stat"><span class="stat-label">Course Hcp</span><strong><%= r.course_handicap %></strong></div>
+            <div class="stat"><span class="stat-label">Net</span><strong><%= r.net_total %></strong></div>
+            <div class="stat"><span class="stat-label">Points</span><strong><%= r.stableford_points %></strong></div>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>
