@@ -16,7 +16,7 @@
   <p><%= round.comp_name %> · <%= new Date(round.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %></p>
 </div>
 
-<p class="muted" style="margin-top:-0.5rem;">
+<p class="muted">
   <%= round.course_name %> (<%= round.tee_name %> tees, par <%= round.course_par %>, CR <%= round.course_rating.toFixed(1) %> / SR <%= round.slope_rating %>)
   <% if (round.marker_name) { %> · Marked by <strong><%= round.marker_name %></strong><% } %>
 </p>
