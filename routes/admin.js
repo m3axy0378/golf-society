@@ -5,6 +5,7 @@ const asyncHandler = require('../lib/asyncHandler');
 const { requireAdmin } = require('../lib/authMiddleware');
 const { UK_COURSES } = require('../lib/ukCourses');
 const ukGolfApi = require('../lib/ukGolfApi');
+const { computeRound } = require('../lib/scoring');
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -275,6 +276,109 @@ router.post(
   asyncHandler(async (req, res) => {
     await db.setSetting('society_name', (req.body.societyName || 'Golf Society').trim());
     res.redirect('/admin/players');
+  })
+);
+
+// ---- Rounds ----
+// Players can't edit their own round once it's saved — this is the escape
+// hatch for a genuine mistake (mis-tapped a score, wrong hole, etc).
+router.get(
+  '/rounds/:id/edit',
+  asyncHandler(async (req, res) => {
+    const { rows: roundRows } = await db.query(
+      `SELECT r.*, p.name AS player_name, c.name AS comp_name,
+              co.name AS course_name, co.par AS course_par, co.course_rating, co.slope_rating, co.tee_name
+       FROM rounds r
+       JOIN players p ON p.id = r.player_id
+       JOIN competitions c ON c.id = r.competition_id
+       JOIN courses co ON co.id = r.course_id
+       WHERE r.id = $1`,
+      [req.params.id]
+    );
+    const round = roundRows[0];
+    if (!round) return res.status(404).render('error', { message: 'Round not found.' });
+
+    const { rows: holes } = await db.query(
+      'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
+      [round.course_id]
+    );
+    const { rows: holeScores } = await db.query(
+      'SELECT hole_number, strokes FROM hole_scores WHERE round_id = $1 ORDER BY hole_number',
+      [round.id]
+    );
+
+    res.render('admin/round-edit', { round, holes, holeScores, error: null });
+  })
+);
+
+router.post(
+  '/rounds/:id/edit',
+  asyncHandler(async (req, res) => {
+    const { rows: roundRows } = await db.query('SELECT * FROM rounds WHERE id = $1', [req.params.id]);
+    const round = roundRows[0];
+    if (!round) return res.status(404).render('error', { message: 'Round not found.' });
+
+    const { rows: courseRows } = await db.query('SELECT * FROM courses WHERE id = $1', [round.course_id]);
+    const course = courseRows[0];
+    const { rows: holes } = await db.query(
+      'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
+      [course.id]
+    );
+
+    const grossScores = holes.map((h) => parseInt(req.body[`hole_${h.hole_number}`], 10));
+    if (grossScores.some((s) => !Number.isFinite(s) || s < 1 || s > 20)) {
+      const { rows: playerRows } = await db.query('SELECT name FROM players WHERE id = $1', [round.player_id]);
+      const { rows: compRows } = await db.query('SELECT name FROM competitions WHERE id = $1', [round.competition_id]);
+      const { rows: holeScores } = await db.query(
+        'SELECT hole_number, strokes FROM hole_scores WHERE round_id = $1 ORDER BY hole_number',
+        [round.id]
+      );
+      return res.status(400).render('admin/round-edit', {
+        round: {
+          ...round,
+          player_name: playerRows[0].name,
+          comp_name: compRows[0].name,
+          course_name: course.name,
+          tee_name: course.tee_name,
+          course_par: course.par,
+          course_rating: course.course_rating,
+          slope_rating: course.slope_rating,
+        },
+        holes,
+        holeScores,
+        error: 'Please enter a valid score (1-20) for every hole.',
+      });
+    }
+
+    const { rows: playerRows } = await db.query('SELECT * FROM players WHERE id = $1', [round.player_id]);
+    const player = playerRows[0];
+
+    const result = computeRound({
+      grossScores,
+      holes: holes.map((h) => ({ par: h.par, strokeIndex: h.stroke_index })),
+      handicapIndex: player.handicap_index,
+      slopeRating: course.slope_rating,
+      courseRating: course.course_rating,
+      coursePar: course.par,
+    });
+
+    await db.withTransaction(async (client) => {
+      await client.query(
+        `UPDATE rounds SET handicap_index_used = $1, course_handicap = $2, gross_total = $3, net_total = $4, stableford_points = $5
+         WHERE id = $6`,
+        [player.handicap_index, result.courseHandicap, result.grossTotal, result.netTotal, result.stablefordPoints, round.id]
+      );
+      await client.query('DELETE FROM hole_scores WHERE round_id = $1', [round.id]);
+      for (const h of result.holeDetails) {
+        await client.query('INSERT INTO hole_scores (round_id, hole_number, strokes) VALUES ($1, $2, $3)', [
+          round.id,
+          h.holeNumber,
+          h.grossStrokes,
+        ]);
+      }
+    });
+
+    res.redirect(`/competitions/${round.competition_id}`);
   })
 );
 

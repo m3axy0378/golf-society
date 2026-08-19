@@ -114,6 +114,16 @@ router.post(
       return res.status(400).render('error', { message: 'This competition is closed for score entry.' });
     }
 
+    const { rows: existingRound } = await db.query('SELECT id FROM rounds WHERE competition_id = $1 AND player_id = $2', [
+      comp.id,
+      req.session.playerId,
+    ]);
+    if (existingRound[0]) {
+      return res.status(400).render('error', {
+        message: "You've already submitted a score for this round — scores can't be changed once saved. Ask an admin if it needs correcting.",
+      });
+    }
+
     const { rows: courses } = await db.query(
       `SELECT co.* FROM competition_courses cc JOIN courses co ON co.id = cc.course_id WHERE cc.competition_id = $1`,
       [comp.id]
@@ -146,7 +156,6 @@ router.post(
     });
 
     await db.withTransaction(async (client) => {
-      await client.query('DELETE FROM rounds WHERE competition_id = $1 AND player_id = $2', [comp.id, player.id]);
       const { rows } = await client.query(
         `INSERT INTO rounds (competition_id, player_id, course_id, handicap_index_used, course_handicap, gross_total, net_total, stableford_points)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,

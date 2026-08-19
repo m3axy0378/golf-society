@@ -1,0 +1,51 @@
+<%- include('../partials/header', { title: 'Edit round' }) %>
+
+<h1 class="mt-0">Edit <%= round.player_name %>'s round</h1>
+<p class="muted" style="margin-top:-0.75rem;">
+  <%= round.comp_name %> · <%= round.course_name %> (<%= round.tee_name %> tees, par <%= round.course_par %>,
+  CR <%= round.course_rating.toFixed(1) %> / SR <%= round.slope_rating %>)
+</p>
+
+<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+
+<div class="card" style="max-width:640px;">
+  <form method="POST" action="/admin/rounds/<%= round.id %>/edit"
+    onsubmit="return confirm('Save this correction? It replaces <%= round.player_name %>\'s saved score for this round.');">
+    <div class="hole-list">
+      <% holes.forEach(h => {
+        const prev = holeScores.find(s => s.hole_number === h.hole_number);
+      %>
+        <div class="score-hole-row" data-par="<%= h.par %>" data-si="<%= h.stroke_index %>">
+          <div class="hole-info">
+            <div class="hole-num">Hole <%= h.hole_number %></div>
+            <div class="hole-meta">Par <%= h.par %> · SI <%= h.stroke_index %></div>
+          </div>
+          <div class="stepper">
+            <button type="button" class="minus" aria-label="Fewer strokes on hole <%= h.hole_number %>">&minus;</button>
+            <input type="number" min="1" max="20" inputmode="numeric" name="hole_<%= h.hole_number %>" value="<%= prev ? prev.strokes : '' %>" required>
+            <button type="button" class="plus" aria-label="More strokes on hole <%= h.hole_number %>">+</button>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+    <button type="submit">Save correction</button>
+  </form>
+</div>
+
+<a class="muted" href="/competitions/<%= round.competition_id %>">&larr; Back to competition</a>
+
+<script>
+  document.querySelectorAll('.stepper').forEach((stepper) => {
+    const input = stepper.querySelector('input');
+    stepper.querySelector('.minus').addEventListener('click', () => {
+      const cur = parseInt(input.value, 10);
+      input.value = Number.isFinite(cur) ? Math.max(1, cur - 1) : 3;
+    });
+    stepper.querySelector('.plus').addEventListener('click', () => {
+      const cur = parseInt(input.value, 10);
+      input.value = Number.isFinite(cur) ? Math.min(20, cur + 1) : 4;
+    });
+  });
+</script>
+
+<%- include('../partials/footer') %>

@@ -26,13 +26,37 @@
 
 <% if (error) { %><div class="error-box"><%= error %></div><% } %>
 
-<% if (comp.status === 'open') { %>
+<% if (comp.status === 'open' && myRound) { %>
   <div class="card">
-    <h2 class="mt-0"><%= myRound ? 'Update your round' : 'Enter your round' %></h2>
+    <h2 class="mt-0">Your round is saved</h2>
+    <p class="muted" style="margin-top:-0.5rem;font-size:0.88rem;">
+      <% const myCourse = courses.find(c => c.id === myRound.course_id); %>
+      <% if (myCourse) { %>Played at <strong><%= myCourse.name %></strong>. <% } %>
+      Scores can't be changed once saved — ask an admin if this one needs correcting.
+    </p>
+    <div class="score-summary" style="position:static;">
+      <div>
+        <span class="sub">Gross</span>
+        <strong><%= myRound.gross_total %></strong>
+      </div>
+      <div>
+        <span class="sub">Net</span>
+        <strong><%= myRound.net_total %></strong>
+      </div>
+      <div>
+        <span class="sub">Stableford</span>
+        <strong><%= myRound.stableford_points %></strong>
+      </div>
+    </div>
+  </div>
+<% } else if (comp.status === 'open') { %>
+  <div class="card">
+    <h2 class="mt-0">Enter your round</h2>
     <p class="muted" style="margin-top:-0.5rem;font-size:0.88rem;">
       Your Handicap Index right now is <strong><%= currentPlayer.handicap_index %></strong>
       (update it on <a href="/profile">your profile</a> if it's changed).
       Your Course Handicap for this round will be calculated automatically.
+      Once you save, it's final — double check your scores first, as only an admin can change them after that.
     </p>
 
     <p style="margin-bottom:1rem;">
@@ -65,15 +89,16 @@
         </div>
         <div>
           <span class="sub">Gross</span>
-          <strong id="summary-gross">–</strong>
+          <strong id="summary-gross-top">–</strong>
         </div>
         <div>
           <span class="sub">Stableford</span>
-          <strong id="summary-points">–</strong>
+          <strong id="summary-points-top">–</strong>
         </div>
       </div>
 
-      <form method="POST" action="/competitions/<%= comp.id %>/score" id="score-form">
+      <form method="POST" action="/competitions/<%= comp.id %>/score" id="score-form"
+        onsubmit="return confirm('Save this round? Once saved you won\'t be able to change it yourself — only an admin can fix a mistake after this.');">
         <input type="hidden" name="courseId" value="<%= selectedCourse.id %>">
         <div class="hole-list">
           <% holes.forEach(h => {
@@ -92,7 +117,23 @@
             </div>
           <% }) %>
         </div>
-        <button type="submit"><%= myRound ? 'Update round' : 'Save round' %></button>
+
+        <div class="score-summary" style="position:static;">
+          <div>
+            <span class="sub">Gross</span>
+            <strong id="summary-gross-bottom">–</strong>
+          </div>
+          <div>
+            <span class="sub">Net</span>
+            <strong id="summary-net-bottom">–</strong>
+          </div>
+          <div>
+            <span class="sub">Stableford</span>
+            <strong id="summary-points-bottom">–</strong>
+          </div>
+        </div>
+
+        <button type="submit">Save round</button>
       </form>
     <% } else { %>
       <p class="muted">Choose which course you played above to enter your scores.</p>
@@ -121,6 +162,7 @@
             <th class="num">Course Hcp</th>
             <th class="num">Net</th>
             <th class="num">Points</th>
+            <% if (currentPlayer.is_admin) { %><th></th><% } %>
           </tr>
         </thead>
         <tbody>
@@ -133,6 +175,9 @@
               <td class="num"><%= r.course_handicap %></td>
               <td class="num" style="<%= comp.format === 'net_stroke' ? 'font-weight:700' : '' %>"><%= r.net_total %></td>
               <td class="num" style="<%= comp.format === 'stableford' ? 'font-weight:700' : '' %>"><%= r.stableford_points %></td>
+              <% if (currentPlayer.is_admin) { %>
+                <td style="text-align:right;"><a class="muted" style="font-size:0.8rem;" href="/admin/rounds/<%= r.id %>/edit">Edit</a></td>
+              <% } %>
             </tr>
           <% }) %>
         </tbody>
@@ -143,7 +188,7 @@
 
 <a class="muted" href="/dashboard">&larr; Back to all competitions</a>
 
-<% if (comp.status === 'open' && selectedCourse) { %>
+<% if (comp.status === 'open' && !myRound && selectedCourse) { %>
   <script>
     // Live in-page preview only — mirrors the pure-math parts of
     // lib/scoring.js so the running total updates instantly as you tap.
@@ -194,9 +239,13 @@
             row.classList.remove('done');
           }
         });
+        const net = gross - courseHcp;
         document.getElementById('summary-holes').textContent = holesDone + '/' + holesPlayed;
-        document.getElementById('summary-gross').textContent = holesDone ? gross : '–';
-        document.getElementById('summary-points').textContent = holesDone ? points : '–';
+        document.getElementById('summary-gross-top').textContent = holesDone ? gross : '–';
+        document.getElementById('summary-points-top').textContent = holesDone ? points : '–';
+        document.getElementById('summary-gross-bottom').textContent = holesDone ? gross : '–';
+        document.getElementById('summary-net-bottom').textContent = holesDone ? net : '–';
+        document.getElementById('summary-points-bottom').textContent = holesDone ? points : '–';
       }
 
       document.querySelectorAll('.stepper').forEach((stepper) => {
