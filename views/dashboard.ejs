@@ -33,7 +33,7 @@
       <div>
         <a href="/competitions/<%= c.id %>"><strong><%= c.name %></strong></a>
         <div class="muted" style="font-size:0.85rem;">
-          <%= new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+          Comp Closes - <%= new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
           · <%= c.course_names %> · <%= FORMAT_LABELS[c.format] %>
         </div>
       </div>
