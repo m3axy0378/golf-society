@@ -294,17 +294,12 @@ const FORMAT_LABELS = {
 };
 
 async function notifyCompetition(comp, { reminder = false } = {}) {
-  const { rows: courseRows } = await db.query(
-    `SELECT co.name FROM competition_courses cc JOIN courses co ON co.id = cc.course_id WHERE cc.competition_id = $1 ORDER BY co.name`,
-    [comp.id]
-  );
-  const courseNames = courseRows.map((c) => c.name).join(', ');
   const closes = new Date(comp.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
   try {
     return await push.sendToAllPlayers({
       title: reminder ? `Reminder: ${comp.name}` : `New competition: ${comp.name}`,
-      body: `Closes ${closes}${courseNames ? ` · ${courseNames}` : ''}`,
+      body: `Closes ${closes}`,
       url: `/competitions/${comp.id}`,
     });
   } catch (err) {
