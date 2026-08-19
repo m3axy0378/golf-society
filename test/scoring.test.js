@@ -60,3 +60,23 @@ test('computeRound totals gross, net and stableford across a full round', () => 
   // Net per hole: 6-3=3 (birdie, 3pts), 5-3=2 (eagle, 4pts), 7-3=4 (par, 2pts) -> 9pts
   assert.equal(result.stablefordPoints, 9);
 });
+
+test('computeRound halves the course handicap for a genuine 9-hole round', () => {
+  const holes = Array.from({ length: 9 }, (_, i) => ({ par: 4, strokeIndex: i + 1 }));
+  // Handicap index 18, slope 113 (no adjustment), CR == par -> full 18-hole
+  // course handicap is 18, so the 9-hole figure should be halved to 9.
+  const result = computeRound({
+    grossScores: Array(9).fill(4), // all pars
+    holes,
+    handicapIndex: 18,
+    slopeRating: 113,
+    courseRating: 36,
+    coursePar: 36,
+  });
+
+  assert.equal(result.courseHandicap, 9);
+  assert.equal(result.grossTotal, 36);
+  assert.equal(result.netTotal, 27); // 36 gross - 9 (halved) course handicap
+  // 9 handicap over 9 holes = 1 stroke every hole; net par-1 (birdie) = 3pts x 9 holes.
+  assert.equal(result.stablefordPoints, 27);
+});

@@ -180,7 +180,9 @@ router.get(
         'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
         [selectedCourse.id]
       );
-      holes = rows;
+      // A 9 Hole Sprint only ever plays the front 9, however many holes the
+      // underlying course actually has on file.
+      holes = comp.type === 'sprint' ? rows.filter((h) => h.hole_number <= 9) : rows;
     }
 
     const rounds = await getRoundsForCompetition(comp.id);
@@ -285,10 +287,13 @@ router.post(
       }
     }
 
-    const { rows: holes } = await db.query(
+    const { rows: allHoles } = await db.query(
       'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
       [course.id]
     );
+    // A 9 Hole Sprint only ever plays the front 9, however many holes the
+    // underlying course actually has on file.
+    const holes = comp.type === 'sprint' ? allHoles.filter((h) => h.hole_number <= 9) : allHoles;
 
     const grossScores = holes.map((h) => parseInt(req.body[`hole_${h.hole_number}`], 10));
     if (grossScores.some((s) => !Number.isFinite(s) || s < 1 || s > 20)) {

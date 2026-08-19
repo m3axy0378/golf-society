@@ -367,7 +367,10 @@
       const courseRating = <%= selectedCourse.course_rating %>;
       const coursePar = <%= selectedCourse.par %>;
       const holesPlayed = <%= holes.length %>;
-      const courseHcp = Math.round(handicapIndex * (slopeRating / 113) + (courseRating - coursePar));
+      const fullCourseHcp = Math.round(handicapIndex * (slopeRating / 113) + (courseRating - coursePar));
+      // A genuine 9-hole round (Sprint) halves the 18-hole Course Handicap —
+      // see lib/scoring.js computeRound, which this preview mirrors.
+      const courseHcp = holesPlayed === 9 ? Math.round(fullCourseHcp / 2) : fullCourseHcp;
 
       function strokesReceived(strokeIndex) {
         if (courseHcp >= 0) {

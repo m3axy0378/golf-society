@@ -428,7 +428,7 @@ router.get(
   '/rounds/:id/edit',
   asyncHandler(async (req, res) => {
     const { rows: roundRows } = await db.query(
-      `SELECT r.*, p.name AS player_name, c.name AS comp_name,
+      `SELECT r.*, p.name AS player_name, c.name AS comp_name, c.type AS comp_type,
               co.name AS course_name, co.par AS course_par, co.course_rating, co.slope_rating, co.tee_name
        FROM rounds r
        JOIN players p ON p.id = r.player_id
@@ -440,10 +440,11 @@ router.get(
     const round = roundRows[0];
     if (!round) return res.status(404).render('error', { message: 'Round not found.' });
 
-    const { rows: holes } = await db.query(
+    const { rows: allHoles } = await db.query(
       'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
       [round.course_id]
     );
+    const holes = round.comp_type === 'sprint' ? allHoles.filter((h) => h.hole_number <= 9) : allHoles;
     const { rows: holeScores } = await db.query(
       'SELECT hole_number, strokes FROM hole_scores WHERE round_id = $1 ORDER BY hole_number',
       [round.id]
@@ -462,10 +463,12 @@ router.post(
 
     const { rows: courseRows } = await db.query('SELECT * FROM courses WHERE id = $1', [round.course_id]);
     const course = courseRows[0];
-    const { rows: holes } = await db.query(
+    const { rows: compRows0 } = await db.query('SELECT type FROM competitions WHERE id = $1', [round.competition_id]);
+    const { rows: allHoles } = await db.query(
       'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
       [course.id]
     );
+    const holes = compRows0[0].type === 'sprint' ? allHoles.filter((h) => h.hole_number <= 9) : allHoles;
 
     const grossScores = holes.map((h) => parseInt(req.body[`hole_${h.hole_number}`], 10));
     if (grossScores.some((s) => !Number.isFinite(s) || s < 1 || s > 20)) {
