@@ -27,6 +27,31 @@
   </div>
 <% } %>
 
+<% if (vapidPublicKey) { %>
+  <div class="muted" id="push-welcome-status" style="font-size:0.85rem;margin:-0.5rem 0 1rem;display:none;"></div>
+  <script src="/push-client.js"></script>
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('enableNotifications') !== '1') return;
+
+      // Drop the flag from the URL so a refresh/back-button doesn't re-trigger this.
+      params.delete('enableNotifications');
+      const cleanUrl = window.location.pathname + (params.toString() ? `?${params.toString()}` : '');
+      window.history.replaceState({}, '', cleanUrl);
+
+      if (!TeeLeaguePush.supported()) return;
+
+      const statusEl = document.getElementById('push-welcome-status');
+      TeeLeaguePush.subscribe(<%- JSON.stringify(vapidPublicKey) %>).then((result) => {
+        if (!result.ok) return;
+        statusEl.textContent = "Notifications are on — we'll let you know when a new competition opens.";
+        statusEl.style.display = '';
+      });
+    })();
+  </script>
+<% } %>
+
 <ul class="list-plain">
   <% competitions.forEach(c => { %>
     <li>

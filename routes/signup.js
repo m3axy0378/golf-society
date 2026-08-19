@@ -34,7 +34,7 @@ router.post(
       const player = rows[0];
       req.session.playerId = player.id;
       req.session.isAdmin = !!player.is_admin;
-      res.redirect('/dashboard');
+      res.redirect('/dashboard?enableNotifications=1');
     } catch (e) {
       if (e.code === '23505') {
         return res.render('signup', { error: 'That email is already registered — try logging in instead.', name, email });
