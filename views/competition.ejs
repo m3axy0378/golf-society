@@ -35,6 +35,11 @@
       Your Course Handicap for this round will be calculated automatically.
     </p>
 
+    <p style="margin-bottom:1rem;">
+      <a class="btn-secondary" href="/competitions/<%= comp.id %>/add-course">+ Add my course</a>
+      <span class="muted" style="font-size:0.85rem;">Playing somewhere not listed below? Add it here.</span>
+    </p>
+
     <% if (courses.length > 1) { %>
       <form method="GET" action="/competitions/<%= comp.id %>" style="margin-bottom:1rem;">
         <label style="display:block;font-size:0.9rem;">

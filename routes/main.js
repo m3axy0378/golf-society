@@ -4,6 +4,7 @@ const asyncHandler = require('../lib/asyncHandler');
 const { requireLogin } = require('../lib/authMiddleware');
 const { computeRound } = require('../lib/scoring');
 const { computeSeasonStandings, rankCompetition } = require('../lib/standings');
+const ukGolfApi = require('../lib/ukGolfApi');
 
 const router = express.Router();
 
@@ -171,6 +172,110 @@ router.post(
     });
 
     res.redirect(`/competitions/${comp.id}`);
+  })
+);
+
+router.get(
+  '/competitions/:id/add-course',
+  requireLogin,
+  asyncHandler(async (req, res) => {
+    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
+    const comp = compRows[0];
+    if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
+    if (comp.status === 'closed') {
+      return res.status(400).render('error', { message: 'This competition is closed, so no more courses can be added.' });
+    }
+
+    const { q, clubId, clubName, city, county } = req.query;
+    let clubResults = null;
+    let clubCourses = null;
+    let apiError = null;
+
+    try {
+      if (clubId) {
+        clubCourses = await ukGolfApi.getClubCourses(clubId);
+      } else if (q) {
+        clubResults = await ukGolfApi.searchClubs(q);
+      }
+    } catch (e) {
+      apiError = 'Course search is temporarily unavailable right now — please try again shortly.';
+    }
+
+    res.render('competition-add-course', {
+      comp,
+      q: q || '',
+      clubId: clubId || '',
+      clubName: clubName || '',
+      city: city || '',
+      county: county || '',
+      clubResults,
+      clubCourses,
+      apiError,
+    });
+  })
+);
+
+router.post(
+  '/competitions/:id/add-course',
+  requireLogin,
+  asyncHandler(async (req, res) => {
+    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
+    const comp = compRows[0];
+    if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
+    if (comp.status === 'closed') {
+      return res.status(400).render('error', { message: 'This competition is closed, so no more courses can be added.' });
+    }
+
+    const { courseId, clubName } = req.body;
+    if (!courseId) {
+      return res.status(400).render('error', { message: 'Please choose a course to add.' });
+    }
+
+    let scorecard;
+    try {
+      scorecard = await ukGolfApi.getScorecard(courseId);
+    } catch (e) {
+      return res.status(502).render('error', { message: 'Could not fetch that course right now — please try again.' });
+    }
+
+    const courseName = clubName ? `${clubName} — ${scorecard.course_name}` : scorecard.course_name;
+    const teeName = `${scorecard.tee_set.name}${scorecard.tee_set.gender ? ` (${scorecard.tee_set.gender})` : ''}`;
+    const totalPar = scorecard.holes.reduce((sum, h) => sum + h.par, 0);
+
+    const newCourseId = await db.withTransaction(async (client) => {
+      const { rows: existing } = await client.query('SELECT id FROM courses WHERE name = $1 AND tee_name = $2', [
+        courseName,
+        teeName,
+      ]);
+      let cid = existing[0] && existing[0].id;
+      if (!cid) {
+        const { rows } = await client.query(
+          'INSERT INTO courses (name, tee_name, par, course_rating, slope_rating, holes_count) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+          [
+            courseName,
+            teeName,
+            totalPar,
+            scorecard.tee_set.course_rating,
+            scorecard.tee_set.slope_rating,
+            scorecard.holes.length,
+          ]
+        );
+        cid = rows[0].id;
+        for (const h of scorecard.holes) {
+          await client.query(
+            'INSERT INTO course_holes (course_id, hole_number, par, stroke_index) VALUES ($1, $2, $3, $4)',
+            [cid, h.hole_number, h.par, h.stroke_index]
+          );
+        }
+      }
+      await client.query('INSERT INTO competition_courses (competition_id, course_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [
+        comp.id,
+        cid,
+      ]);
+      return cid;
+    });
+
+    res.redirect(`/competitions/${comp.id}?course=${newCourseId}`);
   })
 );
 
