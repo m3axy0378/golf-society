@@ -27,4 +27,98 @@
   <% } %>
 </div>
 
+<% if (vapidPublicKey) { %>
+  <div class="card" style="max-width:420px;">
+    <h2 class="mt-0" style="font-size:1.05rem;">Notifications</h2>
+    <p class="muted" style="font-size:0.85rem;" id="push-status">Checking this device&hellip;</p>
+    <button type="button" class="btn-secondary" id="push-toggle" style="display:none;"></button>
+  </div>
+
+  <script>
+    (function () {
+      const VAPID_PUBLIC_KEY = <%- JSON.stringify(vapidPublicKey) %>;
+      const statusEl = document.getElementById('push-status');
+      const toggleBtn = document.getElementById('push-toggle');
+
+      function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(base64);
+        return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+      }
+
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        statusEl.textContent = "This browser doesn't support push notifications.";
+        return;
+      }
+
+      let registration;
+
+      async function refreshUI() {
+        const sub = await registration.pushManager.getSubscription();
+        if (sub) {
+          statusEl.textContent = 'Notifications are on for this device.';
+          toggleBtn.textContent = 'Turn off';
+        } else {
+          statusEl.textContent = "Get notified here when a new competition opens.";
+          toggleBtn.textContent = 'Enable notifications';
+        }
+        toggleBtn.style.display = '';
+      }
+
+      async function enable() {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          statusEl.textContent = 'Notifications are blocked — allow them for this site in your browser settings to turn this on.';
+          return;
+        }
+        const sub = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+        await fetch('/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: sub }),
+        });
+        await refreshUI();
+      }
+
+      async function disable() {
+        const sub = await registration.pushManager.getSubscription();
+        if (sub) {
+          await fetch('/push/unsubscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          });
+          await sub.unsubscribe();
+        }
+        await refreshUI();
+      }
+
+      toggleBtn.addEventListener('click', async () => {
+        toggleBtn.disabled = true;
+        const sub = await registration.pushManager.getSubscription();
+        if (sub) {
+          await disable();
+        } else {
+          await enable();
+        }
+        toggleBtn.disabled = false;
+      });
+
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((reg) => {
+          registration = reg;
+          return refreshUI();
+        })
+        .catch(() => {
+          statusEl.textContent = "Couldn't set up notifications on this device.";
+        });
+    })();
+  </script>
+<% } %>
+
 <%- include('partials/footer') %>

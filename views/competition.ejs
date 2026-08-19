@@ -17,6 +17,10 @@
   <div style="display:flex;align-items:center;gap:0.5rem;">
     <span class="badge <%= comp.status === 'closed' ? 'closed' : '' %>"><%= comp.status === 'open' ? 'Open for entry' : 'Closed' %></span>
     <% if (currentPlayer.is_admin) { %>
+      <form method="POST" action="/admin/competitions/<%= comp.id %>/notify" class="inline-form"
+        onsubmit="return confirm('Send a push notification about &quot;<%= comp.name %>&quot; to every player who has notifications enabled?');">
+        <button type="submit" class="btn-secondary">Notify players</button>
+      </form>
       <form method="POST" action="/admin/competitions/<%= comp.id %>/toggle-status" class="inline-form">
         <button type="submit" class="btn-secondary"><%= comp.status === 'open' ? 'End competition' : 'Reopen' %></button>
       </form>

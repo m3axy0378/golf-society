@@ -18,8 +18,10 @@ app.set('trust proxy', 1); // needed behind Vercel's proxy for secure cookies
 // res.locals doesn't have a key.
 app.locals.currentPlayer = null;
 app.locals.societyName = 'Golf Society';
+app.locals.vapidPublicKey = null;
 
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Sessions are stored client-side in a signed cookie (no server-side session
@@ -56,6 +58,7 @@ app.use(
       res.locals.currentPlayer = rows[0] || null;
     }
     res.locals.societyName = await db.getSetting('society_name', 'Golf Society');
+    res.locals.vapidPublicKey = process.env.VAPID_PUBLIC_KEY || null;
     next();
   })
 );
@@ -79,6 +82,7 @@ app.get('/', (req, res) => {
 app.use('/', require('./routes/setup'));
 app.use('/', require('./routes/auth'));
 app.use('/', require('./routes/signup'));
+app.use('/', require('./routes/push'));
 app.use('/', require('./routes/main'));
 app.use('/admin', require('./routes/admin'));
 

@@ -7,6 +7,7 @@ const { UK_COURSES } = require('../lib/ukCourses');
 const ukGolfApi = require('../lib/ukGolfApi');
 const { computeRound } = require('../lib/scoring');
 const { updatePlayerHandicap } = require('../lib/handicap');
+const push = require('../lib/push');
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -292,6 +293,26 @@ const FORMAT_LABELS = {
   gross_stroke: 'Stroke play (gross)',
 };
 
+async function notifyCompetition(comp, { reminder = false } = {}) {
+  const { rows: courseRows } = await db.query(
+    `SELECT co.name FROM competition_courses cc JOIN courses co ON co.id = cc.course_id WHERE cc.competition_id = $1 ORDER BY co.name`,
+    [comp.id]
+  );
+  const courseNames = courseRows.map((c) => c.name).join(', ');
+  const closes = new Date(comp.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  try {
+    return await push.sendToAllPlayers({
+      title: reminder ? `Reminder: ${comp.name}` : `New competition: ${comp.name}`,
+      body: `Closes ${closes}${courseNames ? ` · ${courseNames}` : ''}`,
+      url: `/competitions/${comp.id}`,
+    });
+  } catch (err) {
+    console.error('Push notification failed:', err);
+    return { sent: 0, failed: 0, configured: false };
+  }
+}
+
 router.get(
   '/competitions',
   asyncHandler(async (req, res) => {
@@ -330,16 +351,19 @@ router.post(
       });
     }
 
+    let compId;
     await db.withTransaction(async (client) => {
       const { rows } = await client.query(
         'INSERT INTO competitions (name, comp_date, format) VALUES ($1, $2, $3) RETURNING id',
         [name.trim(), compDate, format]
       );
-      const compId = rows[0].id;
+      compId = rows[0].id;
       for (const courseId of courseIds) {
         await client.query('INSERT INTO competition_courses (competition_id, course_id) VALUES ($1, $2)', [compId, courseId]);
       }
     });
+
+    await notifyCompetition({ id: compId, name: name.trim(), comp_date: compDate });
 
     res.redirect('/dashboard');
   })
@@ -354,6 +378,16 @@ router.post(
       await db.query('UPDATE competitions SET status = $1 WHERE id = $2', [comp.status === 'open' ? 'closed' : 'open', comp.id]);
     }
     res.redirect(req.get('Referrer') || '/dashboard');
+  })
+);
+
+router.post(
+  '/competitions/:id/notify',
+  asyncHandler(async (req, res) => {
+    const { rows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
+    const comp = rows[0];
+    if (comp) await notifyCompetition(comp, { reminder: true });
+    res.redirect(req.get('Referrer') || '/admin/competitions');
   })
 );
 

@@ -95,6 +95,18 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 
+-- Web Push subscriptions, one row per device/browser a player has enabled
+-- notifications on. Endpoint is unique per browser install, so re-subscribing
+-- the same device (e.g. after clearing site data) just updates its row.
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Older deployments created "competitions.course_id"/"rounds" before
 -- multi-course competitions existed. Relax/extend those in place and
 -- backfill competition_courses + rounds.course_id from the old column so
