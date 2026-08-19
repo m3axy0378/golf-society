@@ -15,58 +15,40 @@
   <% if (competitions.length === 0) { %>
     <p class="muted">No competitions yet.</p>
   <% } else { %>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Competition</th>
-            <th>Date</th>
-            <th>Course(s)</th>
-            <th>Format</th>
-            <th>Type</th>
-            <th class="num">Entries</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% competitions.forEach(c => { %>
-            <tr>
-              <td><a href="/competitions/<%= c.id %>"><%= c.name %></a></td>
-              <td class="muted"><%= new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %></td>
-              <td class="muted"><%= c.course_names %></td>
-              <td class="muted"><%= FORMAT_LABELS[c.format] %></td>
-              <td>
-                <% if (c.type === 'league') { %>
-                  <span class="muted">League</span>
-                <% } else { %>
-                  <span class="badge"><%= TYPE_LABELS[c.type] %></span>
-                <% } %>
-              </td>
-              <td class="num"><%= c.rounds_count %></td>
-              <td><span class="badge <%= c.status === 'closed' ? 'closed' : '' %>"><%= c.status === 'open' ? 'Open' : 'Closed' %></span></td>
-              <td style="text-align:right;white-space:nowrap;">
-                <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/notify"
-                  onsubmit="return confirm('Send a push notification about &quot;<%= c.name %>&quot; to every player who has notifications enabled?');">
-                  <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Notify players</button>
-                </form>
-                <a class="btn btn-secondary" style="padding:0.25rem 0.6rem;" target="_blank" rel="noopener"
-                  href="https://wa.me/?text=<%- encodeURIComponent(`🏌️ New competition: ${c.name}\nCloses ${new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}\n${baseUrl}/competitions/${c.id}`) %>">
-                  WhatsApp
-                </a>
-                <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/toggle-status">
-                  <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;"><%= c.status === 'open' ? 'End competition' : 'Reopen' %></button>
-                </form>
-                <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/delete"
-                  onsubmit="return confirm('Delete &quot;<%= c.name %>&quot; and every score submitted for it? This can\'t be undone.');">
-                  <button type="submit" class="btn-danger" style="padding:0.25rem 0.6rem;">Delete</button>
-                </form>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+    <ul class="list-plain">
+      <% competitions.forEach(c => { %>
+        <li style="flex-direction:column;align-items:stretch;gap:0.6rem;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem;">
+            <div>
+              <a href="/competitions/<%= c.id %>"><strong><%= c.name %></strong></a>
+              <% if (c.type !== 'league') { %><span class="badge"><%= TYPE_LABELS[c.type] %></span><% } %>
+              <div class="muted" style="font-size:0.85rem;margin-top:0.15rem;">
+                <%= new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+                · <%= c.course_names %> · <%= FORMAT_LABELS[c.format] %> · <%= c.rounds_count %> entered
+              </div>
+            </div>
+            <span class="badge <%= c.status === 'closed' ? 'closed' : '' %>"><%= c.status === 'open' ? 'Open' : 'Closed' %></span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+            <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/notify"
+              onsubmit="return confirm('Send a push notification about &quot;<%= c.name %>&quot; to every player who has notifications enabled?');">
+              <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Notify players</button>
+            </form>
+            <a class="btn btn-secondary" style="padding:0.25rem 0.6rem;" target="_blank" rel="noopener"
+              href="https://wa.me/?text=<%- encodeURIComponent(`🏌️ New competition: ${c.name}\nCloses ${new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}\n${baseUrl}/competitions/${c.id}`) %>">
+              WhatsApp
+            </a>
+            <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/toggle-status">
+              <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;"><%= c.status === 'open' ? 'End competition' : 'Reopen' %></button>
+            </form>
+            <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/delete"
+              onsubmit="return confirm('Delete &quot;<%= c.name %>&quot; and every score submitted for it? This can\'t be undone.');">
+              <button type="submit" class="btn-danger" style="padding:0.25rem 0.6rem;">Delete</button>
+            </form>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
   <% } %>
 </div>
 
