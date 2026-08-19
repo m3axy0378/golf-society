@@ -42,7 +42,7 @@
     </svg>
     <div class="muted" style="display:flex;justify-content:space-between;font-size:0.8rem;margin-top:0.4rem;">
       <span><%= first.handicapIndex.toFixed(1) %> · <%= new Date(first.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %></span>
-      <span><%= last.handicapIndex.toFixed(1) %> · <%= new Date(last.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %></span>
+      <span><%= last.handicapIndex.toFixed(1) %> · Now</span>
     </div>
   <% } else { %>
     <p class="muted" style="margin-bottom:0;">Play a few more rounds to see your handicap trend over time.</p>

@@ -645,10 +645,17 @@ router.get(
 
     // Chronological (oldest first) for the trend line, using every round —
     // it's just a record of what the player's handicap actually was at the
-    // time, regardless of competition type.
+    // time, regardless of competition type. handicap_index_used is always the
+    // handicap going INTO that round, so on its own the series stops one step
+    // short of reality — it never shows what the most recent round actually
+    // did to their handicap. Appending the player's current (post-recalc)
+    // handicap_index as a final "now" point closes that gap, and is also
+    // what turns a single-round player's trend from 1 point (too few to
+    // draw a line) into a real 2-point before/after picture.
     const handicapTrend = [...myRounds]
       .reverse()
       .map((r) => ({ date: r.comp_date, handicapIndex: r.handicap_index_used }));
+    handicapTrend.push({ date: new Date(), handicapIndex: res.locals.currentPlayer.handicap_index });
 
     // Sprint rounds are only 9 holes, so mixing them into "best/worst" or an
     // average against full 18-hole rounds would be comparing apples to oranges.
