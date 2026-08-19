@@ -14,6 +14,42 @@ const FORMAT_LABELS = {
   gross_stroke: 'Stroke play (gross)',
 };
 
+// Attaches each round's hole-by-hole strokes and the course's hole info
+// (par + stroke index) it was played on, needed for countback tie-breaking.
+async function attachHoleData(rounds) {
+  if (rounds.length === 0) return rounds;
+
+  const roundIds = rounds.map((r) => r.id);
+  const { rows: holeScores } = await db.query(
+    'SELECT round_id, hole_number, strokes FROM hole_scores WHERE round_id = ANY($1::int[])',
+    [roundIds]
+  );
+  const holeScoresByRound = new Map();
+  for (const hs of holeScores) {
+    if (!holeScoresByRound.has(hs.round_id)) holeScoresByRound.set(hs.round_id, []);
+    holeScoresByRound.get(hs.round_id).push(hs);
+  }
+
+  const courseIds = [...new Set(rounds.map((r) => r.course_id).filter(Boolean))];
+  const courseHolesByCourse = new Map();
+  if (courseIds.length > 0) {
+    const { rows: courseHoles } = await db.query(
+      'SELECT course_id, hole_number, par, stroke_index FROM course_holes WHERE course_id = ANY($1::int[])',
+      [courseIds]
+    );
+    for (const ch of courseHoles) {
+      if (!courseHolesByCourse.has(ch.course_id)) courseHolesByCourse.set(ch.course_id, []);
+      courseHolesByCourse.get(ch.course_id).push(ch);
+    }
+  }
+
+  return rounds.map((r) => ({
+    ...r,
+    holeScores: holeScoresByRound.get(r.id) || [],
+    courseHoles: courseHolesByCourse.get(r.course_id) || [],
+  }));
+}
+
 async function getRoundsForCompetition(competitionId) {
   const { rows } = await db.query(
     `SELECT r.*, p.name AS player_name, co.name AS course_name
@@ -23,7 +59,7 @@ async function getRoundsForCompetition(competitionId) {
      WHERE r.competition_id = $1`,
     [competitionId]
   );
-  return rows;
+  return attachHoleData(rows);
 }
 
 router.get(
@@ -310,10 +346,11 @@ router.get(
   requireLogin,
   asyncHandler(async (req, res) => {
     const { rows: competitions } = await db.query('SELECT id, name, format, comp_date FROM competitions ORDER BY comp_date');
-    const { rows: allRounds } = await db.query(
+    const { rows: allRoundsRaw } = await db.query(
       `SELECT r.*, p.name AS player_name
        FROM rounds r JOIN players p ON p.id = r.player_id`
     );
+    const allRounds = await attachHoleData(allRoundsRaw);
 
     const standings = computeSeasonStandings(competitions, allRounds);
     res.render('season', { standings, competitionsCount: competitions.length });
