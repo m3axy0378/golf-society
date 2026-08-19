@@ -56,6 +56,12 @@ app.use(
         [req.session.playerId]
       );
       res.locals.currentPlayer = rows[0] || null;
+      // Keep the session's admin flag in sync with the database on every
+      // request — it's only ever set once at login otherwise, so a player
+      // promoted/demoted after logging in would see admin controls (driven by
+      // the fresh currentPlayer above) that then silently fail requireAdmin's
+      // check against the stale session value.
+      req.session.isAdmin = !!(res.locals.currentPlayer && res.locals.currentPlayer.is_admin);
     }
     res.locals.societyName = await db.getSetting('society_name', 'Golf Society');
     res.locals.vapidPublicKey = process.env.VAPID_PUBLIC_KEY || null;
