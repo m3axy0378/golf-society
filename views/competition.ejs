@@ -38,10 +38,62 @@
 </div>
 
 <% if (comp.entry_fee_enabled) { %>
+  <% const feeAmount = parseFloat(comp.entry_fee_amount);
+     const paidEntries = ranked.filter(r => r.entry_fee_paid);
+     const unpaidEntries = ranked.filter(r => !r.entry_fee_paid);
+     const pot = paidEntries.length * feeAmount;
+  %>
   <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
-    <p style="margin:0;">Entry fee: <strong>£<%= parseFloat(comp.entry_fee_amount).toFixed(2) %></strong></p>
+    <div>
+      <p style="margin:0;">Entry fee: <strong>£<%= feeAmount.toFixed(2) %></strong></p>
+      <p class="muted" style="margin:0.15rem 0 0;font-size:0.85rem;">
+        Pot so far: <strong>£<%= pot.toFixed(2) %></strong> (<%= paidEntries.length %> paid<%= ranked.length ? ` of ${ranked.length}` : '' %>)
+      </p>
+    </div>
     <a class="btn" target="_blank" rel="noopener" href="<%= comp.entry_fee_link %>">Pay entry fee</a>
   </div>
+
+  <% if (currentPlayer.is_admin) { %>
+    <div class="card">
+      <h2 class="mt-0" style="font-size:1.05rem;">Entry fee payments</h2>
+      <% if (ranked.length === 0) { %>
+        <p class="muted" style="margin-bottom:0;">No entries yet.</p>
+      <% } else { %>
+        <ul class="list-plain">
+          <% ranked.forEach(r => { %>
+            <li>
+              <span><%= r.player_name %></span>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.9rem;">
+                <input type="checkbox" class="paid-toggle" data-round-id="<%= r.id %>" <%= r.entry_fee_paid ? 'checked' : '' %>>
+                Paid
+              </label>
+            </li>
+          <% }) %>
+        </ul>
+        <% if (unpaidEntries.length > 0) { %>
+          <a class="btn btn-secondary" target="_blank" rel="noopener" style="margin-top:0.5rem;"
+            href="https://wa.me/?text=<%- encodeURIComponent(`💰 Entry fee reminder — ${comp.name} (£${feeAmount.toFixed(2)})\nStill to pay: ${unpaidEntries.map(r => r.player_name).join(', ')}\n${comp.entry_fee_link}`) %>">
+            Message unpaid players on WhatsApp
+          </a>
+        <% } else { %>
+          <p class="muted" style="margin:0.5rem 0 0;">Everyone's paid 🎉</p>
+        <% } %>
+      <% } %>
+    </div>
+
+    <script>
+      // Reloads after saving rather than patching the DOM in place, so the
+      // pot total, paid count and unpaid WhatsApp list (computed server-side
+      // above) all stay in sync instead of drifting from what's checked here.
+      document.querySelectorAll('.paid-toggle').forEach((box) => {
+        box.addEventListener('change', async () => {
+          box.disabled = true;
+          await fetch(`/admin/rounds/${box.dataset.roundId}/toggle-paid`, { method: 'POST' });
+          window.location.reload();
+        });
+      });
+    </script>
+  <% } %>
 <% } %>
 
 <% if (error) { %><div class="error-box"><%= error %></div><% } %>

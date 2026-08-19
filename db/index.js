@@ -144,6 +144,10 @@ ALTER TABLE competitions ADD COLUMN IF NOT EXISTS entry_fee_enabled BOOLEAN NOT 
 ALTER TABLE competitions ADD COLUMN IF NOT EXISTS entry_fee_amount NUMERIC;
 ALTER TABLE competitions ADD COLUMN IF NOT EXISTS entry_fee_link TEXT;
 
+-- Whether the player who submitted this round has paid the competition's
+-- entry fee. Meaningless (and ignored) when the competition has no fee.
+ALTER TABLE rounds ADD COLUMN IF NOT EXISTS entry_fee_paid BOOLEAN NOT NULL DEFAULT FALSE;
+
 INSERT INTO competition_courses (competition_id, course_id)
 SELECT id, course_id FROM competitions WHERE course_id IS NOT NULL
 ON CONFLICT DO NOTHING;

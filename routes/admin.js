@@ -525,4 +525,16 @@ router.post(
   })
 );
 
+router.post(
+  '/rounds/:id/toggle-paid',
+  asyncHandler(async (req, res) => {
+    const { rows } = await db.query('SELECT entry_fee_paid FROM rounds WHERE id = $1', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Round not found.' });
+
+    const paid = !rows[0].entry_fee_paid;
+    await db.query('UPDATE rounds SET entry_fee_paid = $1 WHERE id = $2', [paid, req.params.id]);
+    res.json({ paid });
+  })
+);
+
 module.exports = router;
