@@ -30,6 +30,13 @@
           <option value="gross_stroke">Stroke play (gross)</option>
         </select>
       </label>
+      <label>Competition type
+        <select name="type" required>
+          <option value="league">League — normal season points</option>
+          <option value="major">Major — double season points</option>
+          <option value="sprint">9 Hole Sprint — casual, doesn't count towards handicap or season</option>
+        </select>
+      </label>
       <button type="submit">Create competition</button>
     </form>
   <% } %>

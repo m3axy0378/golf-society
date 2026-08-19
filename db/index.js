@@ -118,6 +118,13 @@ ALTER TABLE rounds ADD COLUMN IF NOT EXISTS course_id INTEGER REFERENCES courses
 -- the app, not the DB, since older rounds predate this and have none).
 ALTER TABLE rounds ADD COLUMN IF NOT EXISTS marker_id INTEGER REFERENCES players(id);
 
+-- 'league' competitions count towards Handicap Index and the season Order of
+-- Merit at normal points. 'sprint' ("9 Hole Sprint") competitions are
+-- casual/social rounds that don't count towards either — just a leaderboard
+-- for that competition. 'major' competitions count towards both, same as
+-- league, but at double points towards the season Order of Merit.
+ALTER TABLE competitions ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'league' CHECK (type IN ('league', 'sprint', 'major'));
+
 INSERT INTO competition_courses (competition_id, course_id)
 SELECT id, course_id FROM competitions WHERE course_id IS NOT NULL
 ON CONFLICT DO NOTHING;

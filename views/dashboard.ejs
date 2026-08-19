@@ -57,6 +57,7 @@
     <li>
       <div>
         <a href="/competitions/<%= c.id %>"><strong><%= c.name %></strong></a>
+        <% if (c.type !== 'league') { %><span class="badge"><%= TYPE_LABELS[c.type] %></span><% } %>
         <div class="muted" style="font-size:0.85rem;">
           Comp Closes - <%= new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
           · <%= c.course_names %> · <%= FORMAT_LABELS[c.format] %>

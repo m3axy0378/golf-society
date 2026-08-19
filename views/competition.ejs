@@ -2,7 +2,7 @@
 
 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;">
   <div>
-    <h1 class="mt-0"><%= comp.name %></h1>
+    <h1 class="mt-0"><%= comp.name %> <% if (comp.type !== 'league') { %><span class="badge"><%= TYPE_LABELS[comp.type] %></span><% } %></h1>
     <p class="muted" style="margin-top:-0.5rem;">
       <%= new Date(comp.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
       ·
@@ -12,6 +12,7 @@
         <%= courses.map(c => c.name).join(', ') %>
       <% } %>
       · Format: <strong><%= FORMAT_LABELS[comp.format] %></strong>
+      <% if (comp.type === 'sprint') { %> · <span class="muted">Casual — doesn't count towards handicap or season standings</span><% } %>
     </p>
   </div>
   <div style="display:flex;align-items:center;gap:0.5rem;">

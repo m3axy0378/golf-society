@@ -292,6 +292,11 @@ const FORMAT_LABELS = {
   net_stroke: 'Stroke play (net)',
   gross_stroke: 'Stroke play (gross)',
 };
+const TYPE_LABELS = {
+  league: 'League',
+  sprint: '9 Hole Sprint',
+  major: 'Major (double points)',
+};
 
 async function notifyCompetition(comp, { reminder = false } = {}) {
   const closes = new Date(comp.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -319,7 +324,7 @@ router.get(
        FROM competitions c
        ORDER BY c.comp_date DESC`
     );
-    res.render('admin/competitions', { competitions, FORMAT_LABELS });
+    res.render('admin/competitions', { competitions, FORMAT_LABELS, TYPE_LABELS });
   })
 );
 
@@ -335,6 +340,7 @@ router.post(
   '/competitions',
   asyncHandler(async (req, res) => {
     const { name, compDate, format } = req.body;
+    const type = ['sprint', 'major'].includes(req.body.type) ? req.body.type : 'league';
     const courseIds = [].concat(req.body.courseIds || []).map((id) => parseInt(id, 10)).filter(Number.isFinite);
     const { rows: courses } = await db.query('SELECT * FROM courses ORDER BY name');
 
@@ -349,8 +355,8 @@ router.post(
     let compId;
     await db.withTransaction(async (client) => {
       const { rows } = await client.query(
-        'INSERT INTO competitions (name, comp_date, format) VALUES ($1, $2, $3) RETURNING id',
-        [name.trim(), compDate, format]
+        'INSERT INTO competitions (name, comp_date, format, type) VALUES ($1, $2, $3, $4) RETURNING id',
+        [name.trim(), compDate, format, type]
       );
       compId = rows[0].id;
       for (const courseId of courseIds) {

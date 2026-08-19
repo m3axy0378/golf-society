@@ -14,6 +14,11 @@ const FORMAT_LABELS = {
   net_stroke: 'Stroke play (net)',
   gross_stroke: 'Stroke play (gross)',
 };
+const TYPE_LABELS = {
+  league: 'League',
+  sprint: '9 Hole Sprint',
+  major: 'Major (double points)',
+};
 
 // Attaches each round's hole-by-hole strokes and the course's hole info
 // (par + stroke index) it was played on, needed for countback tie-breaking.
@@ -81,7 +86,7 @@ router.get(
     ]);
     const myRoundCompIds = new Set(myRounds.map((r) => r.competition_id));
 
-    res.render('dashboard', { competitions, myRoundCompIds, FORMAT_LABELS });
+    res.render('dashboard', { competitions, myRoundCompIds, FORMAT_LABELS, TYPE_LABELS });
   })
 );
 
@@ -143,7 +148,7 @@ router.get(
     const ranked = rankCompetition(comp.format, rounds);
     ranked.sort((a, b) => a.rank - b.rank);
 
-    res.render('competition', { comp, courses, selectedCourse, holes, myRound, myHoleScores, markers, ranked, FORMAT_LABELS, error: null });
+    res.render('competition', { comp, courses, selectedCourse, holes, myRound, myHoleScores, markers, ranked, FORMAT_LABELS, TYPE_LABELS, error: null });
   })
 );
 
@@ -347,7 +352,9 @@ router.get(
   '/season',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: competitions } = await db.query('SELECT id, name, format, comp_date FROM competitions ORDER BY comp_date');
+    const { rows: competitions } = await db.query(
+      "SELECT id, name, format, comp_date, type FROM competitions WHERE type != 'sprint' ORDER BY comp_date"
+    );
     const { rows: allRoundsRaw } = await db.query(
       `SELECT r.*, p.name AS player_name
        FROM rounds r JOIN players p ON p.id = r.player_id`
@@ -360,7 +367,11 @@ router.get(
 );
 
 async function getRoundsPlayed(playerId) {
-  const { rows } = await db.query('SELECT COUNT(*) FROM rounds WHERE player_id = $1', [playerId]);
+  const { rows } = await db.query(
+    `SELECT COUNT(*) FROM rounds r JOIN competitions c ON c.id = r.competition_id
+     WHERE r.player_id = $1 AND c.type != 'sprint'`,
+    [playerId]
+  );
   return parseInt(rows[0].count, 10);
 }
 
@@ -405,7 +416,10 @@ router.get(
     const { rows: players } = await db.query('SELECT id, name, handicap_index FROM players ORDER BY name');
     const { rows: roundRows } = await db.query(
       `SELECT r.player_id, r.gross_total, r.submitted_at, co.course_rating, co.slope_rating
-       FROM rounds r JOIN courses co ON co.id = r.course_id
+       FROM rounds r
+       JOIN courses co ON co.id = r.course_id
+       JOIN competitions c ON c.id = r.competition_id
+       WHERE c.type != 'sprint'
        ORDER BY r.submitted_at DESC`
     );
 

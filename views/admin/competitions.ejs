@@ -23,6 +23,7 @@
             <th>Date</th>
             <th>Course(s)</th>
             <th>Format</th>
+            <th>Type</th>
             <th class="num">Entries</th>
             <th>Status</th>
             <th></th>
@@ -35,6 +36,13 @@
               <td class="muted"><%= new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %></td>
               <td class="muted"><%= c.course_names %></td>
               <td class="muted"><%= FORMAT_LABELS[c.format] %></td>
+              <td>
+                <% if (c.type === 'league') { %>
+                  <span class="muted">League</span>
+                <% } else { %>
+                  <span class="badge"><%= TYPE_LABELS[c.type] %></span>
+                <% } %>
+              </td>
               <td class="num"><%= c.rounds_count %></td>
               <td><span class="badge <%= c.status === 'closed' ? 'closed' : '' %>"><%= c.status === 'open' ? 'Open' : 'Closed' %></span></td>
               <td style="text-align:right;white-space:nowrap;">
