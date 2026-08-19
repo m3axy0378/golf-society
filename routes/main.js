@@ -19,7 +19,7 @@ const TYPE_LABELS = {
   sprint: '9 Hole Sprint',
   major: 'Major (double points)',
 };
-const REACTION_EMOJIS = ['⛳', '🔥', '😂', '👏', '😭', '🏆'];
+const REACTION_EMOJIS = ['⛳', '🔥', '😂', '👏', '😭', '🏆', '💩'];
 
 async function getReactionsByRound(roundIds, currentPlayerId) {
   if (roundIds.length === 0) return {};
