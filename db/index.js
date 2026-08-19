@@ -102,6 +102,10 @@ CREATE TABLE IF NOT EXISTS settings (
 ALTER TABLE competitions ALTER COLUMN course_id DROP NOT NULL;
 ALTER TABLE rounds ADD COLUMN IF NOT EXISTS course_id INTEGER REFERENCES courses(id);
 
+-- Who marked/verified the card. Required for new submissions (enforced in
+-- the app, not the DB, since older rounds predate this and have none).
+ALTER TABLE rounds ADD COLUMN IF NOT EXISTS marker_id INTEGER REFERENCES players(id);
+
 INSERT INTO competition_courses (competition_id, course_id)
 SELECT id, course_id FROM competitions WHERE course_id IS NOT NULL
 ON CONFLICT DO NOTHING;

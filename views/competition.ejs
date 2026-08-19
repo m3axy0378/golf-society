@@ -32,6 +32,7 @@
     <p class="muted" style="margin-top:-0.5rem;font-size:0.88rem;">
       <% const myCourse = courses.find(c => c.id === myRound.course_id); %>
       <% if (myCourse) { %>Played at <strong><%= myCourse.name %></strong>. <% } %>
+      <% if (myRound.marker_name) { %>Marked by <strong><%= myRound.marker_name %></strong>. <% } %>
       Scores can't be changed once saved — ask an admin if this one needs correcting.
     </p>
     <div class="score-summary" style="position:static;">
@@ -100,6 +101,20 @@
       <form method="POST" action="/competitions/<%= comp.id %>/score" id="score-form"
         onsubmit="return confirm('Save this round? Once saved you won\'t be able to change it yourself — only an admin can fix a mistake after this.');">
         <input type="hidden" name="courseId" value="<%= selectedCourse.id %>">
+
+        <% if (markers.length > 0) { %>
+          <label style="display:block;font-size:0.9rem;margin-bottom:1rem;">
+            <span style="display:block;margin-bottom:0.3rem;">Who marked your card?</span>
+            <select name="markerId" required
+              style="display:block;width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;background:var(--color-white);color:var(--text);">
+              <option value="">— Choose a member —</option>
+              <% markers.forEach(m => { %>
+                <option value="<%= m.id %>"><%= m.name %></option>
+              <% }) %>
+            </select>
+          </label>
+        <% } %>
+
         <div class="hole-list">
           <% holes.forEach(h => {
             const prev = myHoleScores.find(s => s.hole_number === h.hole_number);

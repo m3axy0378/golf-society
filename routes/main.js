@@ -63,11 +63,18 @@ router.get(
       [comp.id]
     );
 
-    const { rows: myRoundRows } = await db.query('SELECT * FROM rounds WHERE competition_id = $1 AND player_id = $2', [
-      comp.id,
+    const { rows: myRoundRows } = await db.query(
+      `SELECT r.*, m.name AS marker_name
+       FROM rounds r
+       LEFT JOIN players m ON m.id = r.marker_id
+       WHERE r.competition_id = $1 AND r.player_id = $2`,
+      [comp.id, req.session.playerId]
+    );
+    const myRound = myRoundRows[0] || null;
+
+    const { rows: markers } = await db.query('SELECT id, name FROM players WHERE id != $1 ORDER BY name', [
       req.session.playerId,
     ]);
-    const myRound = myRoundRows[0] || null;
 
     let myHoleScores = [];
     if (myRound) {
@@ -99,7 +106,7 @@ router.get(
     const ranked = rankCompetition(comp.format, rounds);
     ranked.sort((a, b) => a.rank - b.rank);
 
-    res.render('competition', { comp, courses, selectedCourse, holes, myRound, myHoleScores, ranked, FORMAT_LABELS, error: null });
+    res.render('competition', { comp, courses, selectedCourse, holes, myRound, myHoleScores, markers, ranked, FORMAT_LABELS, error: null });
   })
 );
 
@@ -133,6 +140,15 @@ router.post(
       return res.status(400).render('error', { message: 'Please choose which course you played.' });
     }
 
+    const { rows: otherPlayers } = await db.query('SELECT id FROM players WHERE id != $1', [req.session.playerId]);
+    let markerId = null;
+    if (otherPlayers.length > 0) {
+      markerId = parseInt(req.body.markerId, 10);
+      if (!Number.isFinite(markerId) || markerId === req.session.playerId || !otherPlayers.some((p) => p.id === markerId)) {
+        return res.status(400).render('error', { message: 'Please select who marked your card.' });
+      }
+    }
+
     const { rows: holes } = await db.query(
       'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
       [course.id]
@@ -157,12 +173,13 @@ router.post(
 
     await db.withTransaction(async (client) => {
       const { rows } = await client.query(
-        `INSERT INTO rounds (competition_id, player_id, course_id, handicap_index_used, course_handicap, gross_total, net_total, stableford_points)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        `INSERT INTO rounds (competition_id, player_id, course_id, marker_id, handicap_index_used, course_handicap, gross_total, net_total, stableford_points)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
         [
           comp.id,
           player.id,
           course.id,
+          markerId,
           player.handicap_index,
           result.courseHandicap,
           result.grossTotal,
