@@ -95,13 +95,16 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 
--- "The Bunker Banter" — a single society-wide chat room. No threads/rooms,
--- just one running log everyone shares.
-CREATE TABLE IF NOT EXISTS chat_messages (
+-- Emoji reactions players can drop on each other's rounds within a
+-- competition. One reaction per (round, player, emoji) — reacting again with
+-- the same emoji is a toggle (handled in the app, by deleting the row).
+CREATE TABLE IF NOT EXISTS round_reactions (
   id SERIAL PRIMARY KEY,
+  round_id INTEGER NOT NULL REFERENCES rounds(id) ON DELETE CASCADE,
   player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-  body TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  emoji TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(round_id, player_id, emoji)
 );
 
 -- Web Push subscriptions, one row per device/browser a player has enabled

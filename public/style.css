@@ -394,71 +394,18 @@ button:focus-visible, .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px 
 .site-footer .accent { color: var(--color-gold); }
 .site-footer .logo-wordmark { text-transform: none; }
 
-/* ---- Bunker Banter chat --------------------------------------------------- */
-.chat-card { display: flex; flex-direction: column; padding: 1rem; max-width: 640px; }
-
-.chat-log {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  height: 55vh;
-  overflow-y: auto;
-  padding: 0.25rem 0.25rem 0.5rem;
-}
-
-.chat-msg { display: flex; flex-direction: column; align-items: flex-start; max-width: 85%; }
-.chat-msg.me { align-self: flex-end; align-items: flex-end; }
-
-.chat-meta { font-size: 0.72rem; color: var(--muted); margin-bottom: 0.15rem; }
-
-.chat-bubble {
-  background: var(--card-alt, #f2f2f0);
-  border-radius: 14px 14px 14px 4px;
-  padding: 0.55rem 0.85rem;
-  font-size: 0.92rem;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.chat-msg.me .chat-bubble { background: var(--color-gold); color: var(--color-navy); border-radius: 14px 14px 4px 14px; }
-
-.chat-delete {
-  background: none;
-  border: none;
-  color: var(--muted);
-  font-size: 0.7rem;
-  padding: 0.1rem 0;
-  cursor: pointer;
-  text-decoration: underline;
-}
-.chat-delete:hover { color: var(--color-danger); background: none; }
-
-.chat-emoji-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.75rem 0 0.5rem; }
-.chat-emoji-btn {
+/* ---- Score reactions ------------------------------------------------------ */
+.reaction-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.reaction-btn {
   background: none;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.3rem 0.55rem;
-  font-size: 1.1rem;
-  line-height: 1;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.6;
   cursor: pointer;
+  color: var(--text);
 }
-.chat-emoji-btn:hover { background: var(--card-alt, #f2f2f0); }
-
-.chat-input-row { display: flex; gap: 0.5rem; align-items: flex-end; }
-.chat-input-row textarea {
-  flex: 1;
-  resize: none;
-  min-height: 2.6rem;
-  max-height: 120px;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font: inherit;
-  font-size: 0.95rem;
-}
-
-@media (max-width: 640px) {
-  .chat-log { height: 60vh; }
-  .chat-msg { max-width: 92%; }
-}
+.reaction-btn:hover { background: var(--card-alt, #f2f2f0); }
+.reaction-btn.reacted { background: var(--color-gold); border-color: var(--color-gold); color: var(--color-navy); font-weight: 700; }
+.reaction-btn .reaction-count { margin-left: 0.15rem; font-size: 0.78rem; }

@@ -194,6 +194,7 @@
             <th class="num">Course Hcp</th>
             <th class="num">Net</th>
             <th class="num">Points</th>
+            <th>React</th>
             <% if (currentPlayer.is_admin) { %><th></th><% } %>
           </tr>
         </thead>
@@ -207,6 +208,17 @@
               <td class="num"><%= r.course_handicap %></td>
               <td class="num" style="<%= comp.format === 'net_stroke' ? 'font-weight:700' : '' %>"><%= r.net_total %></td>
               <td class="num" style="<%= comp.format === 'stableford' ? 'font-weight:700' : '' %>"><%= r.stableford_points %></td>
+              <td>
+                <div class="reaction-row" data-round-id="<%= r.id %>">
+                  <% REACTION_EMOJIS.forEach(emoji => {
+                    const info = (reactionsByRound[r.id] && reactionsByRound[r.id][emoji]) || { count: 0, reactedByMe: false };
+                  %>
+                    <button type="button" class="reaction-btn<%= info.reactedByMe ? ' reacted' : '' %>" data-emoji="<%= emoji %>">
+                      <%= emoji %><% if (info.count > 0) { %><span class="reaction-count"><%= info.count %></span><% } %>
+                    </button>
+                  <% }) %>
+                </div>
+              </td>
               <% if (currentPlayer.is_admin) { %>
                 <td style="text-align:right;"><a class="muted" style="font-size:0.8rem;" href="/admin/rounds/<%= r.id %>/edit">Edit</a></td>
               <% } %>
@@ -217,6 +229,41 @@
     </div>
   <% } %>
 </div>
+
+<script>
+  document.querySelectorAll('.reaction-row').forEach((row) => {
+    row.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.reaction-btn');
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/rounds/${row.dataset.roundId}/react`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emoji: btn.dataset.emoji }),
+        });
+        const data = await res.json();
+        if (!res.ok) return;
+        btn.classList.toggle('reacted', data.reactedByMe);
+        const countEl = btn.querySelector('.reaction-count');
+        if (data.count > 0) {
+          if (countEl) {
+            countEl.textContent = data.count;
+          } else {
+            const span = document.createElement('span');
+            span.className = 'reaction-count';
+            span.textContent = data.count;
+            btn.appendChild(span);
+          }
+        } else if (countEl) {
+          countEl.remove();
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+</script>
 
 <a class="muted" href="/dashboard">&larr; Back to all competitions</a>
 

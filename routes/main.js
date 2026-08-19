@@ -19,6 +19,24 @@ const TYPE_LABELS = {
   sprint: '9 Hole Sprint',
   major: 'Major (double points)',
 };
+const REACTION_EMOJIS = ['⛳', '🔥', '😂', '👏', '😭', '🏆'];
+
+async function getReactionsByRound(roundIds, currentPlayerId) {
+  if (roundIds.length === 0) return {};
+  const { rows } = await db.query(
+    `SELECT round_id, emoji, COUNT(*)::int AS count, BOOL_OR(player_id = $2) AS reacted_by_me
+     FROM round_reactions
+     WHERE round_id = ANY($1::int[])
+     GROUP BY round_id, emoji`,
+    [roundIds, currentPlayerId]
+  );
+  const byRound = {};
+  for (const r of rows) {
+    if (!byRound[r.round_id]) byRound[r.round_id] = {};
+    byRound[r.round_id][r.emoji] = { count: r.count, reactedByMe: r.reacted_by_me };
+  }
+  return byRound;
+}
 
 // Attaches each round's hole-by-hole strokes and the course's hole info
 // (par + stroke index) it was played on, needed for countback tie-breaking.
@@ -148,7 +166,23 @@ router.get(
     const ranked = rankCompetition(comp.format, rounds);
     ranked.sort((a, b) => a.rank - b.rank);
 
-    res.render('competition', { comp, courses, selectedCourse, holes, myRound, myHoleScores, markers, ranked, FORMAT_LABELS, TYPE_LABELS, error: null });
+    const reactionsByRound = await getReactionsByRound(ranked.map((r) => r.id), req.session.playerId);
+
+    res.render('competition', {
+      comp,
+      courses,
+      selectedCourse,
+      holes,
+      myRound,
+      myHoleScores,
+      markers,
+      ranked,
+      FORMAT_LABELS,
+      TYPE_LABELS,
+      REACTION_EMOJIS,
+      reactionsByRound,
+      error: null,
+    });
   })
 );
 
@@ -241,6 +275,34 @@ router.post(
     });
 
     res.redirect(`/competitions/${comp.id}`);
+  })
+);
+
+router.post(
+  '/rounds/:id/react',
+  requireLogin,
+  asyncHandler(async (req, res) => {
+    const { emoji } = req.body;
+    if (!REACTION_EMOJIS.includes(emoji)) return res.status(400).json({ error: 'Invalid reaction.' });
+
+    const { rows: existing } = await db.query(
+      'SELECT id FROM round_reactions WHERE round_id = $1 AND player_id = $2 AND emoji = $3',
+      [req.params.id, req.session.playerId, emoji]
+    );
+    if (existing[0]) {
+      await db.query('DELETE FROM round_reactions WHERE id = $1', [existing[0].id]);
+    } else {
+      await db.query(
+        'INSERT INTO round_reactions (round_id, player_id, emoji) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+        [req.params.id, req.session.playerId, emoji]
+      );
+    }
+
+    const { rows: countRow } = await db.query('SELECT COUNT(*)::int AS count FROM round_reactions WHERE round_id = $1 AND emoji = $2', [
+      req.params.id,
+      emoji,
+    ]);
+    res.json({ emoji, count: countRow[0].count, reactedByMe: !existing[0] });
   })
 );
 
