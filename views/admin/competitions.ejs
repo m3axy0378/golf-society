@@ -42,6 +42,10 @@
                   onsubmit="return confirm('Send a push notification about &quot;<%= c.name %>&quot; to every player who has notifications enabled?');">
                   <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Notify players</button>
                 </form>
+                <a class="btn btn-secondary" style="padding:0.25rem 0.6rem;" target="_blank" rel="noopener"
+                  href="https://wa.me/?text=<%- encodeURIComponent(`🏌️ New competition: ${c.name}\nCloses ${new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}\n${baseUrl}/competitions/${c.id}`) %>">
+                  WhatsApp
+                </a>
                 <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/toggle-status">
                   <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;"><%= c.status === 'open' ? 'End competition' : 'Reopen' %></button>
                 </form>

@@ -19,6 +19,7 @@ app.set('trust proxy', 1); // needed behind Vercel's proxy for secure cookies
 app.locals.currentPlayer = null;
 app.locals.societyName = 'Golf Society';
 app.locals.vapidPublicKey = null;
+app.locals.baseUrl = '';
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -65,6 +66,7 @@ app.use(
     }
     res.locals.societyName = await db.getSetting('society_name', 'Golf Society');
     res.locals.vapidPublicKey = process.env.VAPID_PUBLIC_KEY || null;
+    res.locals.baseUrl = `${req.protocol}://${req.get('host')}`;
     next();
   })
 );
