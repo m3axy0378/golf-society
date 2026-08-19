@@ -159,6 +159,16 @@ h1, h2, h3, .brand, .logo-wordmark {
   margin-bottom: 1.25rem;
 }
 
+/* ---- Dashboard hero ------------------------------------------------------ */
+.hero {
+  background: linear-gradient(135deg, var(--color-green) 0%, var(--color-navy) 100%);
+  color: #fff;
+  border: none;
+}
+.hero h2 { color: #fff; }
+.hero p { color: rgba(255,255,255,0.92); margin: 0.5rem 0; }
+.hero-tagline { font-weight: 700; font-size: 1.05rem; color: #fff; }
+
 h1 { font-size: 1.6rem; margin-top: 0; color: var(--color-navy); }
 h2 { font-size: 1.25rem; color: var(--color-navy); }
 h3 { font-size: 1.05rem; color: var(--color-navy); }
