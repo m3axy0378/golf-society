@@ -82,7 +82,7 @@ router.get(
   '/courses',
   asyncHandler(async (req, res) => {
     const { rows: courses } = await db.query('SELECT * FROM courses ORDER BY name');
-    res.render('admin/courses', { courses });
+    res.render('admin/courses', { courses, error: null });
   })
 );
 
@@ -189,6 +189,99 @@ router.post(
     });
 
     res.redirect('/admin/competitions/new?courseAdded=1');
+  })
+);
+
+router.get(
+  '/courses/:id/edit',
+  asyncHandler(async (req, res) => {
+    const { rows: courseRows } = await db.query('SELECT * FROM courses WHERE id = $1', [req.params.id]);
+    const course = courseRows[0];
+    if (!course) return res.status(404).render('error', { message: 'Course not found.' });
+
+    const { rows: holes } = await db.query(
+      'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
+      [course.id]
+    );
+
+    res.render('admin/course-edit', { course, holes, error: null });
+  })
+);
+
+router.post(
+  '/courses/:id/edit',
+  asyncHandler(async (req, res) => {
+    const { rows: courseRows } = await db.query('SELECT * FROM courses WHERE id = $1', [req.params.id]);
+    const course = courseRows[0];
+    if (!course) return res.status(404).render('error', { message: 'Course not found.' });
+
+    const { name, teeName, courseRating, slopeRating } = req.body;
+    const n = course.holes_count;
+
+    const pars = [];
+    const strokeIndexes = [];
+    for (let i = 1; i <= n; i++) {
+      pars.push(parseInt(req.body[`par_${i}`], 10));
+      strokeIndexes.push(parseInt(req.body[`si_${i}`], 10));
+    }
+
+    const validPars = pars.every((p) => Number.isFinite(p) && p >= 3 && p <= 6);
+    const siSet = new Set(strokeIndexes);
+    const validSI = strokeIndexes.every((s) => Number.isFinite(s) && s >= 1 && s <= n) && siSet.size === n;
+
+    if (!name || !Number.isFinite(parseFloat(courseRating)) || !Number.isFinite(parseInt(slopeRating, 10)) || !validPars || !validSI) {
+      const { rows: holes } = await db.query(
+        'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
+        [course.id]
+      );
+      return res.render('admin/course-edit', {
+        course: { ...course, name, tee_name: teeName, course_rating: parseFloat(courseRating), slope_rating: parseInt(slopeRating, 10) },
+        holes,
+        error: `Please check every field: course name/rating/slope are required, each hole needs a par (3-6), and the stroke indexes must be a full ${n}-hole set (1-${n}, no repeats).`,
+      });
+    }
+
+    const totalPar = pars.reduce((a, b) => a + b, 0);
+
+    await db.withTransaction(async (client) => {
+      await client.query(
+        'UPDATE courses SET name = $1, tee_name = $2, par = $3, course_rating = $4, slope_rating = $5 WHERE id = $6',
+        [name.trim(), (teeName || 'White').trim(), totalPar, parseFloat(courseRating), parseInt(slopeRating, 10), course.id]
+      );
+      for (let i = 0; i < n; i++) {
+        await client.query('UPDATE course_holes SET par = $1, stroke_index = $2 WHERE course_id = $3 AND hole_number = $4', [
+          pars[i],
+          strokeIndexes[i],
+          course.id,
+          i + 1,
+        ]);
+      }
+    });
+
+    res.redirect('/admin/courses');
+  })
+);
+
+router.post(
+  '/courses/:id/delete',
+  asyncHandler(async (req, res) => {
+    const { rows: usage } = await db.query(
+      `SELECT
+        (SELECT COUNT(*) FROM competition_courses WHERE course_id = $1) AS in_competitions,
+        (SELECT COUNT(*) FROM rounds WHERE course_id = $1) AS in_rounds`,
+      [req.params.id]
+    );
+    const { in_competitions, in_rounds } = usage[0];
+    if (parseInt(in_competitions, 10) > 0 || parseInt(in_rounds, 10) > 0) {
+      const { rows: courses } = await db.query('SELECT * FROM courses ORDER BY name');
+      return res.render('admin/courses', {
+        courses,
+        error: "Can't delete this course — it's linked to a competition or has scores submitted for it. Remove it from any competitions first.",
+      });
+    }
+
+    await db.query('DELETE FROM courses WHERE id = $1', [req.params.id]);
+    res.redirect('/admin/courses');
   })
 );
 

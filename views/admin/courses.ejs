@@ -11,13 +11,15 @@
   <a class="btn" href="/admin/courses/new">+ Add course</a>
 </div>
 
+<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+
 <div class="card">
   <% if (courses.length === 0) { %>
     <p class="muted">No courses added yet.</p>
   <% } else { %>
     <div class="table-scroll">
       <table>
-        <thead><tr><th>Course</th><th>Tees</th><th class="num">Par</th><th class="num">CR</th><th class="num">SR</th><th class="num">Holes</th></tr></thead>
+        <thead><tr><th>Course</th><th>Tees</th><th class="num">Par</th><th class="num">CR</th><th class="num">SR</th><th class="num">Holes</th><th></th></tr></thead>
         <tbody>
           <% courses.forEach(c => { %>
             <tr>
@@ -27,6 +29,13 @@
               <td class="num"><%= c.course_rating.toFixed(1) %></td>
               <td class="num"><%= c.slope_rating %></td>
               <td class="num"><%= c.holes_count %></td>
+              <td style="text-align:right;white-space:nowrap;">
+                <a class="muted" style="font-size:0.85rem;margin-right:0.75rem;" href="/admin/courses/<%= c.id %>/edit">Edit</a>
+                <form class="inline-form" method="POST" action="/admin/courses/<%= c.id %>/delete"
+                  onsubmit="return confirm('Delete &quot;<%= c.name %>&quot;? This only works if it isn\'t linked to any competition.');">
+                  <button type="submit" class="btn-danger" style="padding:0.25rem 0.6rem;">Delete</button>
+                </form>
+              </td>
             </tr>
           <% }) %>
         </tbody>

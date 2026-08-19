@@ -1,0 +1,41 @@
+<%- include('../partials/header', { title: 'Edit course' }) %>
+
+<h1 class="mt-0">Edit course</h1>
+<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+
+<div class="card" style="max-width:640px;">
+  <form class="stacked" method="POST" action="/admin/courses/<%= course.id %>/edit">
+    <div class="grid-2">
+      <label>Course name <input type="text" name="name" value="<%= course.name %>" required></label>
+      <label>Tee <input type="text" name="teeName" value="<%= course.tee_name %>" required></label>
+    </div>
+    <div class="grid-2">
+      <label>Course Rating <input type="number" step="0.1" name="courseRating" value="<%= course.course_rating %>" required></label>
+      <label>Slope Rating <input type="number" name="slopeRating" value="<%= course.slope_rating %>" required></label>
+    </div>
+
+    <h3>Hole-by-hole par &amp; stroke index</h3>
+    <p class="muted" style="font-size:0.85rem;margin-top:-0.5rem;">
+      Stroke index is how the holes are ranked for difficulty (1 = hardest, gets handicap strokes first). You'll find both on the course scorecard.
+    </p>
+    <div class="holes-grid">
+      <% holes.forEach(h => { %>
+        <div class="hole-box">
+          <label>Hole <%= h.hole_number %></label>
+          <input type="number" min="3" max="6" name="par_<%= h.hole_number %>" value="<%= h.par %>" placeholder="Par" required>
+          <input type="number" min="1" max="<%= holes.length %>" name="si_<%= h.hole_number %>" value="<%= h.stroke_index %>" placeholder="SI" required style="margin-top:0.25rem;">
+        </div>
+      <% }) %>
+    </div>
+
+    <button type="submit">Save changes</button>
+  </form>
+  <p class="muted" style="font-size:0.85rem;">
+    This doesn't change the number of holes, and doesn't recalculate any scores already submitted for this course —
+    only future rounds use the updated figures.
+  </p>
+</div>
+
+<a class="muted" href="/admin/courses">&larr; Back to courses</a>
+
+<%- include('../partials/footer') %>
