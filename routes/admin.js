@@ -53,7 +53,7 @@ router.post(
     if (Number.isFinite(handicapIndex)) {
       await db.query('UPDATE players SET handicap_index = $1 WHERE id = $2', [handicapIndex, req.params.id]);
     }
-    res.redirect('/admin/players');
+    res.redirect(req.body.redirectTo === '/handicaps' ? '/handicaps' : '/admin/players');
   })
 );
 

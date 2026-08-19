@@ -26,7 +26,17 @@
           <% handicaps.forEach(h => { %>
             <tr class="<%= h.player_id === currentPlayer.id ? 'me' : '' %>">
               <td><%= h.player_name %></td>
-              <td class="num"><strong><%= h.handicap_index %></strong></td>
+              <td class="num">
+                <% if (currentPlayer.is_admin) { %>
+                  <form class="inline-form" method="POST" action="/admin/players/<%= h.player_id %>/handicap" style="display:flex;gap:0.4rem;justify-content:flex-end;">
+                    <input type="hidden" name="redirectTo" value="/handicaps">
+                    <input type="number" step="0.1" name="handicapIndex" value="<%= h.handicap_index %>" style="width:70px;padding:0.25rem 0.4rem;border:1px solid var(--border);border-radius:6px;">
+                    <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Save</button>
+                  </form>
+                <% } else { %>
+                  <strong><%= h.handicap_index %></strong>
+                <% } %>
+              </td>
               <td class="muted" style="font-size:0.85rem;">
                 <% if (h.roundsCounted === 0) { %>
                   Starting handicap &mdash; no rounds submitted yet
@@ -39,6 +49,11 @@
         </tbody>
       </table>
     </div>
+    <% if (currentPlayer.is_admin) { %>
+      <p class="muted" style="font-size:0.8rem;margin-bottom:0;">
+        Edits here only hold until the player's next round, since it's recalculated automatically after every one.
+      </p>
+    <% } %>
   <% } %>
 </div>
 
