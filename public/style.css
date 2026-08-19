@@ -235,6 +235,10 @@ button, .btn {
   padding: 0.65rem 1.2rem;
   font-size: 0.95rem;
   font-weight: 700;
+  font-family: inherit;
+  line-height: 1.2;
+  box-sizing: border-box;
+  vertical-align: middle;
   cursor: pointer;
   text-decoration: none;
   display: inline-block;
