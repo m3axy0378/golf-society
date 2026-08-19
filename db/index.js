@@ -51,17 +51,28 @@ CREATE TABLE IF NOT EXISTS course_holes (
 CREATE TABLE IF NOT EXISTS competitions (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
-  course_id INTEGER NOT NULL REFERENCES courses(id),
+  course_id INTEGER REFERENCES courses(id),
   comp_date DATE NOT NULL,
   format TEXT NOT NULL CHECK(format IN ('stableford','net_stroke','gross_stroke')),
   status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','closed')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Which course(s) a competition can be played on. A competition open to
+-- everyone can span more than one course (e.g. two groups playing different
+-- courses on the same day) — each player picks the one they actually played
+-- when they submit their round.
+CREATE TABLE IF NOT EXISTS competition_courses (
+  competition_id INTEGER NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
+  course_id INTEGER NOT NULL REFERENCES courses(id),
+  PRIMARY KEY (competition_id, course_id)
+);
+
 CREATE TABLE IF NOT EXISTS rounds (
   id SERIAL PRIMARY KEY,
   competition_id INTEGER NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
   player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  course_id INTEGER REFERENCES courses(id),
   handicap_index_used REAL NOT NULL,
   course_handicap INTEGER NOT NULL,
   gross_total INTEGER NOT NULL,
@@ -83,6 +94,21 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
 );
+
+-- Older deployments created "competitions.course_id"/"rounds" before
+-- multi-course competitions existed. Relax/extend those in place and
+-- backfill competition_courses + rounds.course_id from the old column so
+-- existing data keeps working under the new model.
+ALTER TABLE competitions ALTER COLUMN course_id DROP NOT NULL;
+ALTER TABLE rounds ADD COLUMN IF NOT EXISTS course_id INTEGER REFERENCES courses(id);
+
+INSERT INTO competition_courses (competition_id, course_id)
+SELECT id, course_id FROM competitions WHERE course_id IS NOT NULL
+ON CONFLICT DO NOTHING;
+
+UPDATE rounds SET course_id = (
+  SELECT course_id FROM competitions WHERE competitions.id = rounds.competition_id
+) WHERE course_id IS NULL;
 `;
 
 let readyPromise = null;

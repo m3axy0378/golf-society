@@ -147,19 +147,28 @@ router.get(
 router.post(
   '/competitions',
   asyncHandler(async (req, res) => {
-    const { name, courseId, compDate, format } = req.body;
+    const { name, compDate, format } = req.body;
+    const courseIds = [].concat(req.body.courseIds || []).map((id) => parseInt(id, 10)).filter(Number.isFinite);
     const { rows: courses } = await db.query('SELECT * FROM courses ORDER BY name');
 
-    if (!name || !courseId || !compDate || !['stableford', 'net_stroke', 'gross_stroke'].includes(format)) {
-      return res.render('admin/competition-new', { courses, error: 'Please fill in every field.', courseAdded: false });
+    if (!name || !compDate || courseIds.length === 0 || !['stableford', 'net_stroke', 'gross_stroke'].includes(format)) {
+      return res.render('admin/competition-new', {
+        courses,
+        error: 'Please fill in every field and choose at least one course.',
+        courseAdded: false,
+      });
     }
 
-    await db.query('INSERT INTO competitions (name, course_id, comp_date, format) VALUES ($1, $2, $3, $4)', [
-      name.trim(),
-      parseInt(courseId, 10),
-      compDate,
-      format,
-    ]);
+    await db.withTransaction(async (client) => {
+      const { rows } = await client.query(
+        'INSERT INTO competitions (name, comp_date, format) VALUES ($1, $2, $3) RETURNING id',
+        [name.trim(), compDate, format]
+      );
+      const compId = rows[0].id;
+      for (const courseId of courseIds) {
+        await client.query('INSERT INTO competition_courses (competition_id, course_id) VALUES ($1, $2)', [compId, courseId]);
+      }
+    });
 
     res.redirect('/dashboard');
   })

@@ -11,13 +11,18 @@
     <form class="stacked" method="POST" action="/admin/competitions">
       <label>Competition name <input type="text" name="name" placeholder="e.g. August Medal" required></label>
       <label>Date <input type="date" name="compDate" required></label>
-      <label>Course
-        <select name="courseId" required>
-          <% courses.forEach(c => { %>
-            <option value="<%= c.id %>"><%= c.name %> (<%= c.tee_name %> tees, par <%= c.par %>)</option>
-          <% }) %>
-        </select>
-      </label>
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:0.92rem;margin-bottom:0.3rem;">Course(s)</div>
+        <p class="muted" style="font-size:0.82rem;margin:0 0 0.5rem;">
+          Choose one, or several if different groups are playing different courses in this same competition.
+        </p>
+        <% courses.forEach(c => { %>
+          <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem;">
+            <input type="checkbox" name="courseIds" value="<%= c.id %>" style="width:auto;margin:0;">
+            <%= c.name %> (<%= c.tee_name %> tees, par <%= c.par %>)
+          </label>
+        <% }) %>
+      </div>
       <label>Scoring format
         <select name="format" required>
           <option value="stableford">Stableford</option>

@@ -15,8 +15,10 @@ const FORMAT_LABELS = {
 
 async function getRoundsForCompetition(competitionId) {
   const { rows } = await db.query(
-    `SELECT r.*, p.name AS player_name
-     FROM rounds r JOIN players p ON p.id = r.player_id
+    `SELECT r.*, p.name AS player_name, co.name AS course_name
+     FROM rounds r
+     JOIN players p ON p.id = r.player_id
+     LEFT JOIN courses co ON co.id = r.course_id
      WHERE r.competition_id = $1`,
     [competitionId]
   );
@@ -28,9 +30,11 @@ router.get(
   requireLogin,
   asyncHandler(async (req, res) => {
     const { rows: competitions } = await db.query(
-      `SELECT c.*, co.name AS course_name,
+      `SELECT c.*,
+        (SELECT STRING_AGG(co.name, ', ' ORDER BY co.name) FROM competition_courses cc
+          JOIN courses co ON co.id = cc.course_id WHERE cc.competition_id = c.id) AS course_names,
         (SELECT COUNT(*) FROM rounds r WHERE r.competition_id = c.id) AS rounds_count
-       FROM competitions c JOIN courses co ON co.id = c.course_id
+       FROM competitions c
        ORDER BY c.comp_date DESC`
     );
 
@@ -47,17 +51,15 @@ router.get(
   '/competitions/:id',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: compRows } = await db.query(
-      `SELECT c.*, co.name AS course_name, co.par AS course_par, co.course_rating, co.slope_rating, co.holes_count, co.tee_name
-       FROM competitions c JOIN courses co ON co.id = c.course_id WHERE c.id = $1`,
-      [req.params.id]
-    );
+    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
     const comp = compRows[0];
     if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
 
-    const { rows: holes } = await db.query(
-      'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
-      [comp.course_id]
+    const { rows: courses } = await db.query(
+      `SELECT co.* FROM competition_courses cc
+       JOIN courses co ON co.id = cc.course_id
+       WHERE cc.competition_id = $1 ORDER BY co.name`,
+      [comp.id]
     );
 
     const { rows: myRoundRows } = await db.query('SELECT * FROM rounds WHERE competition_id = $1 AND player_id = $2', [
@@ -74,11 +76,29 @@ router.get(
       myHoleScores = rows;
     }
 
+    // The course the score-entry form is scoped to: whichever course the
+    // player already submitted a round for, an explicit ?course= pick, or
+    // (when the competition only has one) that one by default.
+    let selectedCourseId = myRound ? myRound.course_id : parseInt(req.query.course, 10);
+    if (!courses.some((c) => c.id === selectedCourseId)) {
+      selectedCourseId = courses.length === 1 ? courses[0].id : null;
+    }
+    const selectedCourse = courses.find((c) => c.id === selectedCourseId) || null;
+
+    let holes = [];
+    if (selectedCourse) {
+      const { rows } = await db.query(
+        'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
+        [selectedCourse.id]
+      );
+      holes = rows;
+    }
+
     const rounds = await getRoundsForCompetition(comp.id);
     const ranked = rankCompetition(comp.format, rounds);
     ranked.sort((a, b) => a.rank - b.rank);
 
-    res.render('competition', { comp, holes, myRound, myHoleScores, ranked, FORMAT_LABELS, error: null });
+    res.render('competition', { comp, courses, selectedCourse, holes, myRound, myHoleScores, ranked, FORMAT_LABELS, error: null });
   })
 );
 
@@ -86,20 +106,25 @@ router.post(
   '/competitions/:id/score',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: compRows } = await db.query(
-      `SELECT c.*, co.par AS course_par, co.course_rating, co.slope_rating, co.holes_count
-       FROM competitions c JOIN courses co ON co.id = c.course_id WHERE c.id = $1`,
-      [req.params.id]
-    );
+    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
     const comp = compRows[0];
     if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
     if (comp.status === 'closed') {
       return res.status(400).render('error', { message: 'This competition is closed for score entry.' });
     }
 
+    const { rows: courses } = await db.query(
+      `SELECT co.* FROM competition_courses cc JOIN courses co ON co.id = cc.course_id WHERE cc.competition_id = $1`,
+      [comp.id]
+    );
+    const course = courses.find((c) => c.id === parseInt(req.body.courseId, 10));
+    if (!course) {
+      return res.status(400).render('error', { message: 'Please choose which course you played.' });
+    }
+
     const { rows: holes } = await db.query(
       'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
-      [comp.course_id]
+      [course.id]
     );
 
     const grossScores = holes.map((h) => parseInt(req.body[`hole_${h.hole_number}`], 10));
@@ -114,17 +139,26 @@ router.post(
       grossScores,
       holes: holes.map((h) => ({ par: h.par, strokeIndex: h.stroke_index })),
       handicapIndex: player.handicap_index,
-      slopeRating: comp.slope_rating,
-      courseRating: comp.course_rating,
-      coursePar: comp.course_par,
+      slopeRating: course.slope_rating,
+      courseRating: course.course_rating,
+      coursePar: course.par,
     });
 
     await db.withTransaction(async (client) => {
       await client.query('DELETE FROM rounds WHERE competition_id = $1 AND player_id = $2', [comp.id, player.id]);
       const { rows } = await client.query(
-        `INSERT INTO rounds (competition_id, player_id, handicap_index_used, course_handicap, gross_total, net_total, stableford_points)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-        [comp.id, player.id, player.handicap_index, result.courseHandicap, result.grossTotal, result.netTotal, result.stablefordPoints]
+        `INSERT INTO rounds (competition_id, player_id, course_id, handicap_index_used, course_handicap, gross_total, net_total, stableford_points)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        [
+          comp.id,
+          player.id,
+          course.id,
+          player.handicap_index,
+          result.courseHandicap,
+          result.grossTotal,
+          result.netTotal,
+          result.stablefordPoints,
+        ]
       );
       const roundId = rows[0].id;
       for (const h of result.holeDetails) {
