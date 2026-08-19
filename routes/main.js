@@ -116,10 +116,31 @@ router.get(
     const comp = compRows[0];
     if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
 
+    // Picking a course from the "other saved courses" part of the picker
+    // below attaches it to this competition right away — same thing "+ Add
+    // my course" does, just without the extra page for a course that's
+    // already saved somewhere in the app.
+    const queriedCourseId = parseInt(req.query.course, 10);
+    if (comp.status === 'open' && Number.isFinite(queriedCourseId)) {
+      const { rows: courseExists } = await db.query('SELECT id FROM courses WHERE id = $1', [queriedCourseId]);
+      if (courseExists[0]) {
+        await db.query('INSERT INTO competition_courses (competition_id, course_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [
+          comp.id,
+          queriedCourseId,
+        ]);
+      }
+    }
+
     const { rows: courses } = await db.query(
       `SELECT co.* FROM competition_courses cc
        JOIN courses co ON co.id = cc.course_id
        WHERE cc.competition_id = $1 ORDER BY co.name`,
+      [comp.id]
+    );
+    const { rows: otherCourses } = await db.query(
+      `SELECT * FROM courses
+       WHERE id NOT IN (SELECT course_id FROM competition_courses WHERE competition_id = $1)
+       ORDER BY name`,
       [comp.id]
     );
 
@@ -186,6 +207,7 @@ router.get(
     res.render('competition', {
       comp,
       courses,
+      otherCourses,
       selectedCourse,
       holes,
       myRound,

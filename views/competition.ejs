@@ -143,27 +143,38 @@
       Once you save, it's final — double check your scores first, as only an admin can change them after that.
     </p>
 
-    <p style="margin-bottom:1rem;">
-      <a class="btn-secondary" href="/competitions/<%= comp.id %>/add-course">+ Add my course</a>
-      <span class="muted" style="font-size:0.85rem;">Playing somewhere not listed below? Add it here.</span>
-    </p>
-
-    <% if (courses.length > 1) { %>
+    <% if (courses.length + otherCourses.length > 0) { %>
       <form method="GET" action="/competitions/<%= comp.id %>" style="margin-bottom:1rem;">
         <label style="display:block;font-size:0.9rem;">
           <span style="display:block;margin-bottom:0.3rem;">Which course did you play?</span>
           <select name="course" onchange="this.form.submit()"
             style="display:block;width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;background:var(--color-white);color:var(--text);">
             <option value="">— Choose a course —</option>
-            <% courses.forEach(c => { %>
-              <option value="<%= c.id %>" <%= selectedCourse && selectedCourse.id === c.id ? 'selected' : '' %>>
-                <%= c.name %> (<%= c.tee_name %> tees, par <%= c.par %>)
-              </option>
-            <% }) %>
+            <% if (courses.length > 0) { %>
+              <optgroup label="This competition">
+                <% courses.forEach(c => { %>
+                  <option value="<%= c.id %>" <%= selectedCourse && selectedCourse.id === c.id ? 'selected' : '' %>>
+                    <%= c.name %> (<%= c.tee_name %> tees, par <%= c.par %>)
+                  </option>
+                <% }) %>
+              </optgroup>
+            <% } %>
+            <% if (otherCourses.length > 0) { %>
+              <optgroup label="Other saved courses">
+                <% otherCourses.forEach(c => { %>
+                  <option value="<%= c.id %>"><%= c.name %> (<%= c.tee_name %> tees, par <%= c.par %>)</option>
+                <% }) %>
+              </optgroup>
+            <% } %>
           </select>
         </label>
       </form>
     <% } %>
+
+    <p style="margin-bottom:1rem;">
+      <a class="btn-secondary" href="/competitions/<%= comp.id %>/add-course">+ Add my course</a>
+      <span class="muted" style="font-size:0.85rem;">Can't find your course above? Search for it here.</span>
+    </p>
 
     <% if (selectedCourse) { %>
       <div class="score-summary">
