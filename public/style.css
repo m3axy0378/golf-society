@@ -207,6 +207,17 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .trend-down { color: var(--color-green); }
 .trend-up { color: var(--color-danger); }
 
+.weather-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #eaf1f8;
+  color: var(--color-navy);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.82rem;
+}
+
 /* ---- Leaderboard (card list, replaces a table so nothing needs to
    scroll sideways on narrow screens) --------------------------------- */
 .leaderboard-row.me { background: #faf5e8; }

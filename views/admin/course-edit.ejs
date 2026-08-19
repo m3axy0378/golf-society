@@ -13,6 +13,14 @@
       <label>Course Rating <input type="number" step="0.1" name="courseRating" value="<%= course.course_rating %>" required></label>
       <label>Slope Rating <input type="number" name="slopeRating" value="<%= course.slope_rating %>" required></label>
     </div>
+    <div class="grid-2">
+      <label>Town/City <input type="text" name="city" value="<%= course.city || '' %>" placeholder="e.g. Cumbernauld"></label>
+      <label>County <input type="text" name="county" value="<%= course.county || '' %>" placeholder="e.g. North Lanarkshire"></label>
+    </div>
+    <p class="muted" style="font-size:0.85rem;margin-top:-0.5rem;">
+      Used only to find this course's weather on the competition page — leave blank and we'll guess from the course name,
+      or fill these in if the weather shown looks wrong for the area.
+    </p>
 
     <h3>Hole-by-hole par &amp; stroke index</h3>
     <p class="muted" style="font-size:0.85rem;margin-top:-0.5rem;">

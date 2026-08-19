@@ -3,6 +3,7 @@ const db = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const { requireLogin } = require('../lib/authMiddleware');
 const { computeRound, strokesReceivedOnHole, stablefordPointsForHole } = require('../lib/scoring');
+const { getWeatherForCourse } = require('../lib/courseWeather');
 const { bestCountFor, updatePlayerHandicap } = require('../lib/handicap');
 const { computeSeasonStandings, rankCompetition, metricForFormat } = require('../lib/standings');
 const ukGolfApi = require('../lib/ukGolfApi');
@@ -144,6 +145,16 @@ router.get(
       [comp.id]
     );
 
+    // Best-effort — a course whose location can't be resolved, or a date
+    // with no weather data available yet, just gets no entry in the map.
+    const weatherByCourseId = {};
+    await Promise.all(
+      courses.map(async (c) => {
+        const w = await getWeatherForCourse(c, comp.comp_date);
+        if (w) weatherByCourseId[c.id] = w;
+      })
+    );
+
     const { rows: myRoundRows } = await db.query(
       `SELECT r.*, m.name AS marker_name
        FROM rounds r
@@ -223,6 +234,7 @@ router.get(
       allEntries,
       pendingEntries,
       hasEntered,
+      weatherByCourseId,
       error: null,
     });
   })

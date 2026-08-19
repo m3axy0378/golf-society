@@ -37,6 +37,23 @@
   </div>
 </div>
 
+<% const weatherCourses = courses.filter(c => weatherByCourseId[c.id]); %>
+<% if (weatherCourses.length > 0) { %>
+  <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0 0 1rem;">
+    <% weatherCourses.forEach(c => {
+      const w = weatherByCourseId[c.id];
+    %>
+      <span class="weather-chip" title="<%= w.label %><%= w.isForecast ? ' — forecast, may change' : ' — actual conditions that day' %>">
+        <%= w.emoji %>
+        <% if (courses.length > 1) { %><strong><%= c.name %>:</strong><% } %>
+        <%= Math.round(w.tempMinC) %>&ndash;<%= Math.round(w.tempMaxC) %>&deg;C
+        <% if (w.precipitationMm > 0.1) { %> · <%= w.precipitationMm.toFixed(1) %>mm rain<% } %>
+        <% if (w.isForecast) { %><span class="muted" style="font-size:0.75rem;"> (forecast)</span><% } %>
+      </span>
+    <% }) %>
+  </div>
+<% } %>
+
 <% if (comp.entry_fee_enabled) { %>
   <% const feeAmount = parseFloat(comp.entry_fee_amount);
      const paidEntries = allEntries.filter(e => e.entry_fee_paid);

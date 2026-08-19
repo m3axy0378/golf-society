@@ -178,6 +178,35 @@ ON CONFLICT DO NOTHING;
 UPDATE rounds SET course_id = (
   SELECT course_id FROM competitions WHERE competitions.id = rounds.competition_id
 ) WHERE course_id IS NULL;
+
+-- Location for weather lookups. city/county are optional and admin-editable
+-- (used to steer the geocoding search); latitude/longitude are resolved
+-- automatically the first time weather is requested for a course and then
+-- cached here so it's a one-time lookup, not a fetch on every page load.
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS city TEXT;
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS county TEXT;
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS latitude REAL;
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS longitude REAL;
+
+-- Cached weather (forecast or, once the date has passed, actual historical
+-- conditions) per course per day, from the free/keyless Open-Meteo API.
+-- Historical rows never change once fetched; forecast rows get refreshed
+-- periodically (handled in lib/courseWeather.js) since a forecast firms up
+-- as the date approaches, and eventually gets replaced by real data.
+CREATE TABLE IF NOT EXISTS course_weather (
+  id SERIAL PRIMARY KEY,
+  course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  weather_date DATE NOT NULL,
+  temp_max_c REAL,
+  temp_min_c REAL,
+  precipitation_mm REAL,
+  wind_speed_max_kph REAL,
+  weather_label TEXT,
+  weather_emoji TEXT,
+  is_forecast BOOLEAN NOT NULL,
+  fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(course_id, weather_date)
+);
 `;
 
 let readyPromise = null;

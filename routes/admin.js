@@ -216,7 +216,7 @@ router.post(
     const course = courseRows[0];
     if (!course) return res.status(404).render('error', { message: 'Course not found.' });
 
-    const { name, teeName, courseRating, slopeRating } = req.body;
+    const { name, teeName, courseRating, slopeRating, city, county } = req.body;
     const n = course.holes_count;
 
     const pars = [];
@@ -236,18 +236,25 @@ router.post(
         [course.id]
       );
       return res.render('admin/course-edit', {
-        course: { ...course, name, tee_name: teeName, course_rating: parseFloat(courseRating), slope_rating: parseInt(slopeRating, 10) },
+        course: { ...course, name, tee_name: teeName, course_rating: parseFloat(courseRating), slope_rating: parseInt(slopeRating, 10), city, county },
         holes,
         error: `Please check every field: course name/rating/slope are required, each hole needs a par (3-6), and the stroke indexes must be a full ${n}-hole set (1-${n}, no repeats).`,
       });
     }
 
     const totalPar = pars.reduce((a, b) => a + b, 0);
+    const newCity = (city || '').trim() || null;
+    const newCounty = (county || '').trim() || null;
+    // If the location changed, drop the cached lat/lon so the next weather
+    // lookup re-geocodes from the new city/county instead of the old spot.
+    const locationChanged = newCity !== course.city || newCounty !== course.county;
 
     await db.withTransaction(async (client) => {
       await client.query(
-        'UPDATE courses SET name = $1, tee_name = $2, par = $3, course_rating = $4, slope_rating = $5 WHERE id = $6',
-        [name.trim(), (teeName || 'White').trim(), totalPar, parseFloat(courseRating), parseInt(slopeRating, 10), course.id]
+        `UPDATE courses SET name = $1, tee_name = $2, par = $3, course_rating = $4, slope_rating = $5, city = $6, county = $7
+         ${locationChanged ? ', latitude = NULL, longitude = NULL' : ''}
+         WHERE id = $8`,
+        [name.trim(), (teeName || 'White').trim(), totalPar, parseFloat(courseRating), parseInt(slopeRating, 10), newCity, newCounty, course.id]
       );
       for (let i = 0; i < n; i++) {
         await client.query('UPDATE course_holes SET par = $1, stroke_index = $2 WHERE course_id = $3 AND hole_number = $4', [
