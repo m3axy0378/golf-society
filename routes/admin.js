@@ -4,6 +4,7 @@ const db = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const { requireAdmin } = require('../lib/authMiddleware');
 const { UK_COURSES } = require('../lib/ukCourses');
+const ukGolfApi = require('../lib/ukGolfApi');
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -83,9 +84,54 @@ router.get(
   })
 );
 
-router.get('/courses/new', (req, res) => {
-  res.render('admin/course-new', { error: null, welcome: req.query.welcome === '1', holesCount: 18, ukCourses: UK_COURSES });
-});
+router.get(
+  '/courses/new',
+  asyncHandler(async (req, res) => {
+    const { q, clubId, clubName, city, county, courseId } = req.query;
+    let clubResults = null;
+    let clubCourses = null;
+    let liveCourse = null;
+    let apiError = null;
+
+    try {
+      if (courseId) {
+        const scorecard = await ukGolfApi.getScorecard(courseId);
+        const region = [city, county].filter(Boolean).join(', ') || 'UK';
+        liveCourse = {
+          id: 'live-pick',
+          name: clubName ? `${clubName} — ${scorecard.course_name}` : scorecard.course_name,
+          region: `${region} · via live course search`,
+          teeName: `${scorecard.tee_set.name}${scorecard.tee_set.gender ? ` (${scorecard.tee_set.gender})` : ''}`,
+          courseRating: scorecard.tee_set.course_rating,
+          slopeRating: scorecard.tee_set.slope_rating,
+          holes: scorecard.holes.map((h) => ({ par: h.par, si: h.stroke_index })),
+        };
+      } else if (clubId) {
+        clubCourses = await ukGolfApi.getClubCourses(clubId);
+      } else if (q) {
+        clubResults = await ukGolfApi.searchClubs(q);
+      }
+    } catch (e) {
+      apiError = 'Live course search is temporarily unavailable right now — you can still use the quick picks above or fill in the form by hand.';
+    }
+
+    res.render('admin/course-new', {
+      error: null,
+      welcome: req.query.welcome === '1',
+      holesCount: 18,
+      ukCourses: liveCourse ? [...UK_COURSES, liveCourse] : UK_COURSES,
+      autoSelectId: liveCourse ? liveCourse.id : null,
+      q: q || '',
+      clubId: clubId || '',
+      clubName: clubName || '',
+      city: city || '',
+      county: county || '',
+      clubResults,
+      clubCourses,
+      apiError,
+    });
+  })
+);
 
 router.post(
   '/courses',
@@ -110,6 +156,15 @@ router.post(
         welcome: false,
         holesCount: n,
         ukCourses: UK_COURSES,
+        autoSelectId: null,
+        q: '',
+        clubId: '',
+        clubName: '',
+        city: '',
+        county: '',
+        clubResults: null,
+        clubCourses: null,
+        apiError: null,
       });
     }
 

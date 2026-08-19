@@ -23,6 +23,53 @@
       </p>
     </div>
   <% } %>
+
+  <div style="margin-bottom:1.25rem;padding-top:1rem;border-top:1px solid var(--border);">
+    <label style="display:block;font-size:0.92rem;margin-bottom:0.3rem;">Or search the full UK club database</label>
+
+    <% if (apiError) { %>
+      <p class="muted" style="font-size:0.85rem;"><%= apiError %></p>
+    <% } %>
+
+    <form method="GET" action="/admin/courses/new" style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
+      <input type="text" name="q" value="<%= q %>" placeholder="Club name, e.g. Wentworth"
+        style="flex:1;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
+      <button type="submit" class="btn-secondary">Search</button>
+    </form>
+
+    <% if (clubResults) { %>
+      <% if (clubResults.length === 0) { %>
+        <p class="muted" style="font-size:0.85rem;">No clubs found for "<%= q %>".</p>
+      <% } else { %>
+        <ul class="list-plain" style="margin-bottom:0;">
+          <% clubResults.forEach(c => { %>
+            <li>
+              <a href="/admin/courses/new?clubId=<%= c.id %>&clubName=<%= encodeURIComponent(c.name) %>&city=<%= encodeURIComponent(c.city || '') %>&county=<%= encodeURIComponent(c.county || '') %>">
+                <%= c.name %>
+              </a>
+              <span class="muted" style="font-size:0.85rem;"><%= [c.city, c.county].filter(Boolean).join(', ') %></span>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    <% } %>
+
+    <% if (clubCourses) { %>
+      <% if (clubCourses.length === 0) { %>
+        <p class="muted" style="font-size:0.85rem;"><%= clubName %> has no course data in the database yet — try the quick picks above, or fill in the form by hand.</p>
+      <% } else { %>
+        <p class="muted" style="font-size:0.85rem;margin-bottom:0.5rem;">Choose a course at <strong><%= clubName %></strong>:</p>
+        <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+          <% clubCourses.forEach(course => { %>
+            <a class="btn btn-secondary" style="font-size:0.85rem;"
+              href="/admin/courses/new?clubId=<%= clubId %>&clubName=<%= encodeURIComponent(clubName) %>&city=<%= encodeURIComponent(city) %>&county=<%= encodeURIComponent(county) %>&courseId=<%= course.id %>">
+              <%= course.name %> (par <%= course.par %>, <%= course.holes %> holes)
+            </a>
+          <% }) %>
+        </div>
+      <% } %>
+    <% } %>
+  </div>
   <form class="stacked" method="POST" action="/admin/courses" id="course-form">
     <div class="grid-2">
       <label>Course name <input type="text" name="name" id="field-name" required></label>
@@ -79,15 +126,13 @@
   <% if (typeof ukCourses !== 'undefined' && ukCourses.length) { %>
     const UK_COURSES = <%- JSON.stringify(ukCourses) %>;
     const picker = document.getElementById('uk-course-picker');
-    picker.addEventListener('change', () => {
-      if (picker.value === '') return;
-      const course = UK_COURSES[parseInt(picker.value, 10)];
 
+    function fillFromCourse(course) {
       document.getElementById('field-name').value = course.name;
       document.getElementById('field-teeName').value = course.teeName;
       document.getElementById('field-courseRating').value = course.courseRating;
       document.getElementById('field-slopeRating').value = course.slopeRating;
-      select.value = '18';
+      select.value = course.holes.length === 9 ? '9' : '18';
       applyHoleCount();
 
       course.holes.forEach((hole, idx) => {
@@ -95,7 +140,20 @@
         document.querySelector(`input[name="par_${n}"]`).value = hole.par;
         document.querySelector(`input[name="si_${n}"]`).value = hole.si;
       });
+    }
+
+    picker.addEventListener('change', () => {
+      if (picker.value === '') return;
+      fillFromCourse(UK_COURSES[parseInt(picker.value, 10)]);
     });
+
+    <% if (autoSelectId) { %>
+      const autoIdx = UK_COURSES.findIndex((c) => c.id === <%- JSON.stringify(autoSelectId) %>);
+      if (autoIdx !== -1) {
+        picker.value = String(autoIdx);
+        fillFromCourse(UK_COURSES[autoIdx]);
+      }
+    <% } %>
   <% } %>
 </script>
 
