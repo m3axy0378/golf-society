@@ -409,7 +409,6 @@ button:focus-visible, .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px 
 
 /* ---- Score reactions ------------------------------------------------------ */
 .reaction-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
-.reaction-row .reaction-btn:nth-child(4) { margin-right: 100%; }
 .reaction-btn {
   background: none;
   border: 1px solid var(--border);
