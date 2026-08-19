@@ -58,16 +58,37 @@
     <% } %>
 
     <% if (selectedCourse) { %>
-      <form method="POST" action="/competitions/<%= comp.id %>/score">
+      <div class="score-summary">
+        <div>
+          <span class="sub">Holes</span>
+          <strong id="summary-holes">0/<%= holes.length %></strong>
+        </div>
+        <div>
+          <span class="sub">Gross</span>
+          <strong id="summary-gross">–</strong>
+        </div>
+        <div>
+          <span class="sub">Stableford</span>
+          <strong id="summary-points">–</strong>
+        </div>
+      </div>
+
+      <form method="POST" action="/competitions/<%= comp.id %>/score" id="score-form">
         <input type="hidden" name="courseId" value="<%= selectedCourse.id %>">
-        <div class="holes-grid">
+        <div class="hole-list">
           <% holes.forEach(h => {
             const prev = myHoleScores.find(s => s.hole_number === h.hole_number);
           %>
-            <div class="hole-box">
-              <label>Hole <%= h.hole_number %></label>
-              <input type="number" min="1" max="20" name="hole_<%= h.hole_number %>" value="<%= prev ? prev.strokes : '' %>" required>
-              <div class="par">Par <%= h.par %> · SI <%= h.stroke_index %></div>
+            <div class="score-hole-row" data-par="<%= h.par %>" data-si="<%= h.stroke_index %>">
+              <div class="hole-info">
+                <div class="hole-num">Hole <%= h.hole_number %></div>
+                <div class="hole-meta">Par <%= h.par %> · SI <%= h.stroke_index %></div>
+              </div>
+              <div class="stepper">
+                <button type="button" class="minus" aria-label="Fewer strokes on hole <%= h.hole_number %>">&minus;</button>
+                <input type="number" min="1" max="20" inputmode="numeric" name="hole_<%= h.hole_number %>" value="<%= prev ? prev.strokes : '' %>" required>
+                <button type="button" class="plus" aria-label="More strokes on hole <%= h.hole_number %>">+</button>
+              </div>
             </div>
           <% }) %>
         </div>
@@ -121,5 +142,81 @@
 </div>
 
 <a class="muted" href="/dashboard">&larr; Back to all competitions</a>
+
+<% if (comp.status === 'open' && selectedCourse) { %>
+  <script>
+    // Live in-page preview only — mirrors the pure-math parts of
+    // lib/scoring.js so the running total updates instantly as you tap.
+    // The server always recomputes the real result from scratch on save,
+    // so a mismatch here can only ever mislead the preview, never the score.
+    (function () {
+      const handicapIndex = <%= currentPlayer.handicap_index %>;
+      const slopeRating = <%= selectedCourse.slope_rating %>;
+      const courseRating = <%= selectedCourse.course_rating %>;
+      const coursePar = <%= selectedCourse.par %>;
+      const holesPlayed = <%= holes.length %>;
+      const courseHcp = Math.round(handicapIndex * (slopeRating / 113) + (courseRating - coursePar));
+
+      function strokesReceived(strokeIndex) {
+        if (courseHcp >= 0) {
+          const base = Math.floor(courseHcp / holesPlayed);
+          const extra = (courseHcp % holesPlayed) >= strokeIndex ? 1 : 0;
+          return base + extra;
+        }
+        const posHcp = Math.abs(courseHcp);
+        const base = -Math.floor(posHcp / holesPlayed);
+        const reverseIndex = holesPlayed - strokeIndex + 1;
+        const extra = (posHcp % holesPlayed) >= reverseIndex ? -1 : 0;
+        return base + extra;
+      }
+
+      function stablefordPoints(strokes, par, received) {
+        return Math.max(0, 2 - (strokes - received - par));
+      }
+
+      const rows = Array.from(document.querySelectorAll(".score-hole-row"));
+
+      function updateSummary() {
+        let holesDone = 0;
+        let gross = 0;
+        let points = 0;
+        rows.forEach((row) => {
+          const input = row.querySelector('input[type="number"]');
+          const val = parseInt(input.value, 10);
+          if (Number.isFinite(val) && val > 0) {
+            holesDone += 1;
+            gross += val;
+            const par = parseInt(row.dataset.par, 10);
+            const si = parseInt(row.dataset.si, 10);
+            points += stablefordPoints(val, par, strokesReceived(si));
+            row.classList.add('done');
+          } else {
+            row.classList.remove('done');
+          }
+        });
+        document.getElementById('summary-holes').textContent = holesDone + '/' + holesPlayed;
+        document.getElementById('summary-gross').textContent = holesDone ? gross : '–';
+        document.getElementById('summary-points').textContent = holesDone ? points : '–';
+      }
+
+      document.querySelectorAll('.stepper').forEach((stepper) => {
+        const input = stepper.querySelector('input');
+        stepper.querySelector('.minus').addEventListener('click', () => {
+          const cur = parseInt(input.value, 10);
+          input.value = Number.isFinite(cur) ? Math.max(1, cur - 1) : 3;
+          updateSummary();
+        });
+        stepper.querySelector('.plus').addEventListener('click', () => {
+          const cur = parseInt(input.value, 10);
+          input.value = Number.isFinite(cur) ? Math.min(20, cur + 1) : 4;
+          updateSummary();
+        });
+        input.addEventListener('input', updateSummary);
+      });
+
+      updateSummary();
+    })();
+  </script>
+<% } %>
 
 <%- include('partials/footer') %>

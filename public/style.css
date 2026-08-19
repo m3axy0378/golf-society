@@ -287,6 +287,72 @@ button:focus-visible, .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px 
 }
 .hole-box .par { font-size: 0.7rem; color: var(--muted); }
 
+/* ---- Score entry (stepper rows, one hole per row + a live running total —
+   phone-first, similar to how apps like HowDidiDo do live scoring). */
+.score-summary {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-navy);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  margin: 0 0 1rem;
+  text-align: center;
+}
+.score-summary .sub { font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.score-summary strong { display: block; font-size: 1.2rem; color: var(--color-gold); }
+
+.hole-list { display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0; }
+.score-hole-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.8rem;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+.score-hole-row.done { border-color: var(--color-gold); background: #fdf9ef; }
+.score-hole-row .hole-num { font-weight: 700; color: var(--color-navy); font-size: 0.95rem; }
+.score-hole-row .hole-meta { font-size: 0.78rem; color: var(--muted); }
+.stepper { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+.stepper button {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-navy);
+  background: var(--color-white);
+  color: var(--color-navy);
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stepper button:hover { background: var(--color-navy); color: var(--text-primary); }
+.stepper input {
+  width: 2.6rem;
+  text-align: center;
+  padding: 0.4rem 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.stepper input:focus {
+  outline: none;
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px rgba(201, 162, 74, 0.25);
+}
+
 .list-plain { list-style: none; padding: 0; margin: 0; }
 .list-plain li {
   padding: 0.7rem 0;
