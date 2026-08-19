@@ -264,72 +264,57 @@
   <% if (ranked.length === 0 && pendingEntries.length === 0) { %>
     <p class="muted">No entries yet.</p>
   <% } else { %>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Player</th>
-            <% if (courses.length > 1) { %><th>Course</th><% } %>
-            <th class="num">Gross</th>
-            <th class="num">Course Hcp</th>
-            <th class="num">Net</th>
-            <th class="num">Points</th>
-            <% if (comp.entry_fee_enabled) { %><th>Paid</th><% } %>
-            <th>React</th>
-            <% if (currentPlayer.is_admin) { %><th></th><% } %>
-          </tr>
-        </thead>
-        <tbody>
-          <% ranked.forEach(r => { %>
-            <tr class="<%= r.player_id === currentPlayer.id ? 'me' : '' %> <%= r.rank === 1 ? 'rank-1' : '' %>">
-              <td><%= r.rank %></td>
-              <td><%= r.player_name %></td>
-              <% if (courses.length > 1) { %><td class="muted" style="font-size:0.85rem;"><%= r.course_name %></td><% } %>
-              <td class="num" style="<%= comp.format === 'gross_stroke' ? 'font-weight:700' : '' %>"><%= r.gross_total %></td>
-              <td class="num"><%= r.course_handicap %></td>
-              <td class="num" style="<%= comp.format === 'net_stroke' ? 'font-weight:700' : '' %>"><%= r.net_total %></td>
-              <td class="num" style="<%= comp.format === 'stableford' ? 'font-weight:700' : '' %>"><%= r.stableford_points %></td>
+    <ul class="list-plain leaderboard-list">
+      <% ranked.forEach(r => { %>
+        <li class="leaderboard-row <%= r.player_id === currentPlayer.id ? 'me' : '' %> <%= r.rank === 1 ? 'rank-1' : '' %>" style="flex-direction:column;align-items:stretch;gap:0.6rem;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
+            <div>
+              <span class="rank-num"><%= r.rank %></span>
+              <strong><%= r.player_name %></strong>
+              <% if (courses.length > 1) { %><div class="muted" style="font-size:0.8rem;"><%= r.course_name %></div><% } %>
+            </div>
+            <div style="text-align:right;">
               <% if (comp.entry_fee_enabled) {
                 const entry = allEntries.find(e => e.player_id === r.player_id);
               %>
-                <td><% if (entry && entry.entry_fee_paid) { %><span class="badge">Paid</span><% } else { %><span class="muted">–</span><% } %></td>
+                <% if (entry && entry.entry_fee_paid) { %><span class="badge">Paid</span><% } else { %><span class="muted">–</span><% } %>
               <% } %>
-              <td>
-                <div class="reaction-row" data-round-id="<%= r.id %>">
-                  <% REACTION_EMOJIS.forEach(emoji => {
-                    const info = (reactionsByRound[r.id] && reactionsByRound[r.id][emoji]) || { count: 0, reactedByMe: false };
-                  %>
-                    <button type="button" class="reaction-btn<%= info.reactedByMe ? ' reacted' : '' %>" data-emoji="<%= emoji %>">
-                      <%= emoji %><% if (info.count > 0) { %><span class="reaction-count"><%= info.count %></span><% } %>
-                    </button>
-                  <% }) %>
-                </div>
-              </td>
               <% if (currentPlayer.is_admin) { %>
-                <td style="text-align:right;"><a class="muted" style="font-size:0.8rem;" href="/admin/rounds/<%= r.id %>/edit">Edit</a></td>
+                <div style="margin-top:0.3rem;"><a class="muted" style="font-size:0.8rem;" href="/admin/rounds/<%= r.id %>/edit">Edit</a></div>
               <% } %>
-            </tr>
-          <% }) %>
-          <% pendingEntries.forEach(e => { %>
-            <tr class="<%= e.player_id === currentPlayer.id ? 'me' : '' %>">
-              <td>–</td>
-              <td><%= e.player_name %> <span class="muted" style="font-size:0.8rem;">(entered, not yet played)</span></td>
-              <% if (courses.length > 1) { %><td class="muted">–</td><% } %>
-              <td class="num">0</td>
-              <td class="num">–</td>
-              <td class="num">0</td>
-              <td class="num">0</td>
-              <% if (comp.entry_fee_enabled) { %>
-                <td><% if (e.entry_fee_paid) { %><span class="badge">Paid</span><% } else { %><span class="muted">–</span><% } %></td>
-              <% } %>
-              <td></td>
-              <% if (currentPlayer.is_admin) { %><td></td><% } %>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+            </div>
+          </div>
+          <div class="leaderboard-stats">
+            <div class="stat"><span class="stat-label">Gross</span><strong style="<%= comp.format === 'gross_stroke' ? 'color:var(--color-gold)' : '' %>"><%= r.gross_total %></strong></div>
+            <div class="stat"><span class="stat-label">Course Hcp</span><strong><%= r.course_handicap %></strong></div>
+            <div class="stat"><span class="stat-label">Net</span><strong style="<%= comp.format === 'net_stroke' ? 'color:var(--color-gold)' : '' %>"><%= r.net_total %></strong></div>
+            <div class="stat"><span class="stat-label">Points</span><strong style="<%= comp.format === 'stableford' ? 'color:var(--color-gold)' : '' %>"><%= r.stableford_points %></strong></div>
+          </div>
+          <div class="reaction-row" data-round-id="<%= r.id %>">
+            <% REACTION_EMOJIS.forEach(emoji => {
+              const info = (reactionsByRound[r.id] && reactionsByRound[r.id][emoji]) || { count: 0, reactedByMe: false };
+            %>
+              <button type="button" class="reaction-btn<%= info.reactedByMe ? ' reacted' : '' %>" data-emoji="<%= emoji %>">
+                <%= emoji %><% if (info.count > 0) { %><span class="reaction-count"><%= info.count %></span><% } %>
+              </button>
+            <% }) %>
+          </div>
+        </li>
+      <% }) %>
+      <% pendingEntries.forEach(e => { %>
+        <li class="leaderboard-row <%= e.player_id === currentPlayer.id ? 'me' : '' %>" style="flex-direction:column;align-items:stretch;gap:0.3rem;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
+            <div>
+              <strong><%= e.player_name %></strong>
+              <div class="muted" style="font-size:0.8rem;">Entered, not yet played</div>
+            </div>
+            <% if (comp.entry_fee_enabled) { %>
+              <% if (e.entry_fee_paid) { %><span class="badge">Paid</span><% } else { %><span class="muted">–</span><% } %>
+            <% } %>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
   <% } %>
 </div>
 
