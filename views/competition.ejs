@@ -288,7 +288,7 @@
                 <% if (comp.entry_fee_enabled) {
                   const entry = allEntries.find(e => e.player_id === r.player_id);
                 %>
-                  <% if (entry && entry.entry_fee_paid) { %><span title="Entry fee paid">💷</span><% } %>
+                  <% if (entry && entry.entry_fee_paid) { %><span title="Entry fee paid" style="color:var(--color-green);font-weight:700;">£</span><% } %>
                 <% } %>
               </td>
               <% if (courses.length > 1) { %><td class="muted" style="font-size:0.85rem;"><%= r.course_name %></td><% } %>
@@ -317,7 +317,7 @@
               <td>–</td>
               <td>
                 <%= e.player_name %>
-                <% if (comp.entry_fee_enabled && e.entry_fee_paid) { %><span title="Entry fee paid">💷</span><% } %>
+                <% if (comp.entry_fee_enabled && e.entry_fee_paid) { %><span title="Entry fee paid" style="color:var(--color-green);font-weight:700;">£</span><% } %>
                 <span class="muted" style="font-size:0.8rem;">(entered, not yet played)</span>
               </td>
               <% if (courses.length > 1) { %><td class="muted">–</td><% } %>
