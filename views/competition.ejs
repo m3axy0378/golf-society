@@ -37,9 +37,10 @@
 
     <% if (courses.length > 1) { %>
       <form method="GET" action="/competitions/<%= comp.id %>" style="margin-bottom:1rem;">
-        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.9rem;">
-          Which course did you play?
-          <select name="course" onchange="this.form.submit()">
+        <label style="display:block;font-size:0.9rem;">
+          <span style="display:block;margin-bottom:0.3rem;">Which course did you play?</span>
+          <select name="course" onchange="this.form.submit()"
+            style="display:block;width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;background:var(--color-white);color:var(--text);">
             <option value="">— Choose a course —</option>
             <% courses.forEach(c => { %>
               <option value="<%= c.id %>" <%= selectedCourse && selectedCourse.id === c.id ? 'selected' : '' %>>
