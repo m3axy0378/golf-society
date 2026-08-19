@@ -20,6 +20,10 @@
       <form method="POST" action="/admin/competitions/<%= comp.id %>/toggle-status" class="inline-form">
         <button type="submit" class="btn-secondary"><%= comp.status === 'open' ? 'End competition' : 'Reopen' %></button>
       </form>
+      <form method="POST" action="/admin/competitions/<%= comp.id %>/delete" class="inline-form"
+        onsubmit="return confirm('Delete &quot;<%= comp.name %>&quot; and every score submitted for it? This can\'t be undone.');">
+        <button type="submit" class="btn-danger">Delete</button>
+      </form>
     <% } %>
   </div>
 </div>
