@@ -265,14 +265,15 @@
 
       document.querySelectorAll('.stepper').forEach((stepper) => {
         const input = stepper.querySelector('input');
+        const par = parseInt(stepper.closest('.score-hole-row').dataset.par, 10);
         stepper.querySelector('.minus').addEventListener('click', () => {
           const cur = parseInt(input.value, 10);
-          input.value = Number.isFinite(cur) ? Math.max(1, cur - 1) : 3;
+          input.value = Number.isFinite(cur) ? Math.max(1, cur - 1) : par;
           updateSummary();
         });
         stepper.querySelector('.plus').addEventListener('click', () => {
           const cur = parseInt(input.value, 10);
-          input.value = Number.isFinite(cur) ? Math.min(20, cur + 1) : 4;
+          input.value = Number.isFinite(cur) ? Math.min(20, cur + 1) : par;
           updateSummary();
         });
         input.addEventListener('input', updateSummary);
