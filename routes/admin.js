@@ -191,6 +191,27 @@ router.post(
 );
 
 // ---- Competitions ----
+const FORMAT_LABELS = {
+  stableford: 'Stableford',
+  net_stroke: 'Stroke play (net)',
+  gross_stroke: 'Stroke play (gross)',
+};
+
+router.get(
+  '/competitions',
+  asyncHandler(async (req, res) => {
+    const { rows: competitions } = await db.query(
+      `SELECT c.*,
+        (SELECT STRING_AGG(co.name, ', ' ORDER BY co.name) FROM competition_courses cc
+          JOIN courses co ON co.id = cc.course_id WHERE cc.competition_id = c.id) AS course_names,
+        (SELECT COUNT(*) FROM rounds r WHERE r.competition_id = c.id) AS rounds_count
+       FROM competitions c
+       ORDER BY c.comp_date DESC`
+    );
+    res.render('admin/competitions', { competitions, FORMAT_LABELS });
+  })
+);
+
 router.get(
   '/competitions/new',
   asyncHandler(async (req, res) => {
@@ -238,6 +259,14 @@ router.post(
       await db.query('UPDATE competitions SET status = $1 WHERE id = $2', [comp.status === 'open' ? 'closed' : 'open', comp.id]);
     }
     res.redirect(req.get('Referrer') || '/dashboard');
+  })
+);
+
+router.post(
+  '/competitions/:id/delete',
+  asyncHandler(async (req, res) => {
+    await db.query('DELETE FROM competitions WHERE id = $1', [req.params.id]);
+    res.redirect('/admin/competitions');
   })
 );
 

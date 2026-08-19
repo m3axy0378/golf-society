@@ -1,5 +1,11 @@
 <%- include('../partials/header', { title: 'Admin · Players' }) %>
 
+<div style="display:flex;gap:1rem;margin-bottom:0.75rem;font-size:0.9rem;">
+  <a href="/admin/players">Players</a>
+  <a href="/admin/courses" class="muted">Courses</a>
+  <a href="/admin/competitions" class="muted">Competitions</a>
+</div>
+
 <h1 class="mt-0">Players</h1>
 
 <% if (error) { %><div class="error-box"><%= error %></div><% } %>

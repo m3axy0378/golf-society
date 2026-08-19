@@ -1,0 +1,57 @@
+<%- include('../partials/header', { title: 'Admin · Competitions' }) %>
+
+<div style="display:flex;gap:1rem;margin-bottom:0.75rem;font-size:0.9rem;">
+  <a href="/admin/players" class="muted">Players</a>
+  <a href="/admin/courses" class="muted">Courses</a>
+  <a href="/admin/competitions">Competitions</a>
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+  <h1 class="mt-0">Competitions</h1>
+  <a class="btn" href="/admin/competitions/new">+ New competition</a>
+</div>
+
+<div class="card">
+  <% if (competitions.length === 0) { %>
+    <p class="muted">No competitions yet.</p>
+  <% } else { %>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Competition</th>
+            <th>Date</th>
+            <th>Course(s)</th>
+            <th>Format</th>
+            <th class="num">Entries</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% competitions.forEach(c => { %>
+            <tr>
+              <td><a href="/competitions/<%= c.id %>"><%= c.name %></a></td>
+              <td class="muted"><%= new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %></td>
+              <td class="muted"><%= c.course_names %></td>
+              <td class="muted"><%= FORMAT_LABELS[c.format] %></td>
+              <td class="num"><%= c.rounds_count %></td>
+              <td><span class="badge <%= c.status === 'closed' ? 'closed' : '' %>"><%= c.status === 'open' ? 'Open' : 'Closed' %></span></td>
+              <td style="text-align:right;white-space:nowrap;">
+                <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/toggle-status">
+                  <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;"><%= c.status === 'open' ? 'Close' : 'Reopen' %></button>
+                </form>
+                <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/delete"
+                  onsubmit="return confirm('Delete &quot;<%= c.name %>&quot; and every score submitted for it? This can\'t be undone.');">
+                  <button type="submit" class="btn-danger" style="padding:0.25rem 0.6rem;">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../partials/footer') %>
