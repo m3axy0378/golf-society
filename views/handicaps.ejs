@@ -1,0 +1,45 @@
+<%- include('partials/header', { title: 'Players Handicap' }) %>
+
+<h1 class="mt-0">Players Handicap</h1>
+<p class="muted" style="margin-top:-0.75rem;">
+  Works like the real-world handicap system, scaled down for a smaller season: each Handicap Index is the average of
+  the best 4 Score Differentials from a player's last 8 rounds (real-world handicapping uses best 8 of last 20).
+  Score Differential = (113 &divide; Slope Rating) &times; (Gross Score &minus; Course Rating), so it's fair whichever
+  course you played. With fewer than 8 rounds, roughly the best half count instead. A new player's Handicap Index
+  starts as whatever was entered for them and switches to fully automatic from their first submitted round.
+</p>
+
+<div class="card">
+  <% if (handicaps.length === 0) { %>
+    <p class="muted">No players yet.</p>
+  <% } else { %>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th class="num">Handicap Index</th>
+            <th>Basis</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% handicaps.forEach(h => { %>
+            <tr class="<%= h.player_id === currentPlayer.id ? 'me' : '' %>">
+              <td><%= h.player_name %></td>
+              <td class="num"><strong><%= h.handicap_index %></strong></td>
+              <td class="muted" style="font-size:0.85rem;">
+                <% if (h.roundsCounted === 0) { %>
+                  Starting handicap &mdash; no rounds submitted yet
+                <% } else { %>
+                  Best <%= h.bestCount %> of last <%= h.roundsCounted %> round<%= h.roundsCounted === 1 ? '' : 's' %>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

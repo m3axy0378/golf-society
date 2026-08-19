@@ -6,6 +6,7 @@ const { requireAdmin } = require('../lib/authMiddleware');
 const { UK_COURSES } = require('../lib/ukCourses');
 const ukGolfApi = require('../lib/ukGolfApi');
 const { computeRound } = require('../lib/scoring');
+const { updatePlayerHandicap } = require('../lib/handicap');
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -376,6 +377,7 @@ router.post(
           h.grossStrokes,
         ]);
       }
+      await updatePlayerHandicap(client.query.bind(client), round.player_id);
     });
 
     res.redirect(`/competitions/${round.competition_id}`);

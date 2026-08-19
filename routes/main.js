@@ -3,6 +3,7 @@ const db = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const { requireLogin } = require('../lib/authMiddleware');
 const { computeRound } = require('../lib/scoring');
+const { bestCountFor, updatePlayerHandicap } = require('../lib/handicap');
 const { computeSeasonStandings, rankCompetition } = require('../lib/standings');
 const ukGolfApi = require('../lib/ukGolfApi');
 
@@ -231,6 +232,7 @@ router.post(
           h.grossStrokes,
         ]);
       }
+      await updatePlayerHandicap(client.query.bind(client), player.id);
     });
 
     res.redirect(`/competitions/${comp.id}`);
@@ -357,12 +359,18 @@ router.get(
   })
 );
 
+async function getRoundsPlayed(playerId) {
+  const { rows } = await db.query('SELECT COUNT(*) FROM rounds WHERE player_id = $1', [playerId]);
+  return parseInt(rows[0].count, 10);
+}
+
 router.get(
   '/profile',
   requireLogin,
   asyncHandler(async (req, res) => {
     const { rows } = await db.query('SELECT * FROM players WHERE id = $1', [req.session.playerId]);
-    res.render('profile', { player: rows[0], message: null });
+    const roundsPlayed = await getRoundsPlayed(req.session.playerId);
+    res.render('profile', { player: rows[0], roundsPlayed, message: null });
   })
 );
 
@@ -370,14 +378,58 @@ router.post(
   '/profile',
   requireLogin,
   asyncHandler(async (req, res) => {
+    const roundsPlayed = await getRoundsPlayed(req.session.playerId);
+    if (roundsPlayed > 0) {
+      const { rows } = await db.query('SELECT * FROM players WHERE id = $1', [req.session.playerId]);
+      return res.render('profile', {
+        player: rows[0],
+        roundsPlayed,
+        message: 'Your Handicap Index is calculated automatically now and can\'t be edited by hand.',
+      });
+    }
     const handicapIndex = parseFloat(req.body.handicapIndex);
     if (!Number.isFinite(handicapIndex)) {
       const { rows } = await db.query('SELECT * FROM players WHERE id = $1', [req.session.playerId]);
-      return res.render('profile', { player: rows[0], message: 'Please enter a valid handicap index.' });
+      return res.render('profile', { player: rows[0], roundsPlayed, message: 'Please enter a valid handicap index.' });
     }
     await db.query('UPDATE players SET handicap_index = $1 WHERE id = $2', [handicapIndex, req.session.playerId]);
     const { rows } = await db.query('SELECT * FROM players WHERE id = $1', [req.session.playerId]);
-    res.render('profile', { player: rows[0], message: 'Handicap index updated.' });
+    res.render('profile', { player: rows[0], roundsPlayed, message: 'Starting handicap index updated.' });
+  })
+);
+
+router.get(
+  '/handicaps',
+  requireLogin,
+  asyncHandler(async (req, res) => {
+    const { rows: players } = await db.query('SELECT id, name, handicap_index FROM players ORDER BY name');
+    const { rows: roundRows } = await db.query(
+      `SELECT r.player_id, r.gross_total, r.submitted_at, co.course_rating, co.slope_rating
+       FROM rounds r JOIN courses co ON co.id = r.course_id
+       ORDER BY r.submitted_at DESC`
+    );
+
+    const recentByPlayer = new Map();
+    for (const r of roundRows) {
+      if (!recentByPlayer.has(r.player_id)) recentByPlayer.set(r.player_id, []);
+      const arr = recentByPlayer.get(r.player_id);
+      if (arr.length < 8) arr.push(r);
+    }
+
+    const handicaps = players
+      .map((p) => {
+        const recent = recentByPlayer.get(p.id) || [];
+        return {
+          player_id: p.id,
+          player_name: p.name,
+          handicap_index: p.handicap_index,
+          roundsCounted: recent.length,
+          bestCount: recent.length > 0 ? bestCountFor(recent.length) : 0,
+        };
+      })
+      .sort((a, b) => a.handicap_index - b.handicap_index);
+
+    res.render('handicaps', { handicaps });
   })
 );
 
