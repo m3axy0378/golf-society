@@ -4,7 +4,8 @@
   "description": "A little web app for a golf society to run monthly competitions across different courses, with WHS-style handicapping. Runs on Vercel with a Postgres database.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test test/"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
