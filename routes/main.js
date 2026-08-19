@@ -99,12 +99,12 @@ router.get(
        ORDER BY c.comp_date DESC`
     );
 
-    const { rows: myRounds } = await db.query('SELECT competition_id FROM rounds WHERE player_id = $1', [
+    const { rows: myEntries } = await db.query('SELECT competition_id FROM entries WHERE player_id = $1', [
       req.session.playerId,
     ]);
-    const myRoundCompIds = new Set(myRounds.map((r) => r.competition_id));
+    const myEntryCompIds = new Set(myEntries.map((e) => e.competition_id));
 
-    res.render('dashboard', { competitions, myRoundCompIds, FORMAT_LABELS, TYPE_LABELS });
+    res.render('dashboard', { competitions, myEntryCompIds, FORMAT_LABELS, TYPE_LABELS });
   })
 );
 
@@ -168,6 +168,21 @@ router.get(
 
     const reactionsByRound = await getReactionsByRound(ranked.map((r) => r.id), req.session.playerId);
 
+    // Every player who's entered this competition, whether they've submitted
+    // a score yet or not — drives the "entered, not yet played" rows at the
+    // bottom of the leaderboard and the entry-fee payment tracking below.
+    const { rows: allEntries } = await db.query(
+      `SELECT e.id, e.player_id, p.name AS player_name, e.entry_fee_paid, e.entered_at, r.id AS round_id
+       FROM entries e
+       JOIN players p ON p.id = e.player_id
+       LEFT JOIN rounds r ON r.competition_id = e.competition_id AND r.player_id = e.player_id
+       WHERE e.competition_id = $1
+       ORDER BY e.entered_at`,
+      [comp.id]
+    );
+    const pendingEntries = allEntries.filter((e) => !e.round_id);
+    const hasEntered = allEntries.some((e) => e.player_id === req.session.playerId);
+
     res.render('competition', {
       comp,
       courses,
@@ -181,8 +196,31 @@ router.get(
       TYPE_LABELS,
       REACTION_EMOJIS,
       reactionsByRound,
+      allEntries,
+      pendingEntries,
+      hasEntered,
       error: null,
     });
+  })
+);
+
+router.post(
+  '/competitions/:id/enter',
+  requireLogin,
+  asyncHandler(async (req, res) => {
+    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
+    const comp = compRows[0];
+    if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
+    if (comp.status === 'closed') {
+      return res.status(400).render('error', { message: 'This competition is closed for entry.' });
+    }
+
+    await db.query('INSERT INTO entries (competition_id, player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [
+      comp.id,
+      req.session.playerId,
+    ]);
+
+    res.redirect(`/competitions/${comp.id}`);
   })
 );
 
@@ -248,6 +286,14 @@ router.post(
     });
 
     await db.withTransaction(async (client) => {
+      // A player who goes straight to scoring without clicking "Enter
+      // competition" first still counts as entered — this just fills in the
+      // record retroactively rather than requiring the extra step.
+      await client.query('INSERT INTO entries (competition_id, player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [
+        comp.id,
+        player.id,
+      ]);
+
       const { rows } = await client.query(
         `INSERT INTO rounds (competition_id, player_id, course_id, marker_id, handicap_index_used, course_handicap, gross_total, net_total, stableford_points)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,

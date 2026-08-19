@@ -39,15 +39,15 @@
 
 <% if (comp.entry_fee_enabled) { %>
   <% const feeAmount = parseFloat(comp.entry_fee_amount);
-     const paidEntries = ranked.filter(r => r.entry_fee_paid);
-     const unpaidEntries = ranked.filter(r => !r.entry_fee_paid);
+     const paidEntries = allEntries.filter(e => e.entry_fee_paid);
+     const unpaidEntries = allEntries.filter(e => !e.entry_fee_paid);
      const pot = paidEntries.length * feeAmount;
   %>
   <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
     <div>
       <p style="margin:0;">Entry fee: <strong>£<%= feeAmount.toFixed(2) %></strong></p>
       <p class="muted" style="margin:0.15rem 0 0;font-size:0.85rem;">
-        Pot so far: <strong>£<%= pot.toFixed(2) %></strong> (<%= paidEntries.length %> paid<%= ranked.length ? ` of ${ranked.length}` : '' %>)
+        Pot so far: <strong>£<%= pot.toFixed(2) %></strong> (<%= paidEntries.length %> paid<%= allEntries.length ? ` of ${allEntries.length}` : '' %>)
       </p>
     </div>
     <a class="btn" target="_blank" rel="noopener" href="<%= comp.entry_fee_link %>">Pay entry fee</a>
@@ -56,15 +56,15 @@
   <% if (currentPlayer.is_admin) { %>
     <div class="card">
       <h2 class="mt-0" style="font-size:1.05rem;">Entry fee payments</h2>
-      <% if (ranked.length === 0) { %>
+      <% if (allEntries.length === 0) { %>
         <p class="muted" style="margin-bottom:0;">No entries yet.</p>
       <% } else { %>
         <ul class="list-plain">
-          <% ranked.forEach(r => { %>
+          <% allEntries.forEach(e => { %>
             <li>
-              <span><%= r.player_name %></span>
+              <span><%= e.player_name %><% if (!e.round_id) { %> <span class="muted" style="font-size:0.8rem;">(not yet played)</span><% } %></span>
               <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.9rem;">
-                <input type="checkbox" class="paid-toggle" data-round-id="<%= r.id %>" <%= r.entry_fee_paid ? 'checked' : '' %>>
+                <input type="checkbox" class="paid-toggle" data-entry-id="<%= e.id %>" <%= e.entry_fee_paid ? 'checked' : '' %>>
                 Paid
               </label>
             </li>
@@ -72,7 +72,7 @@
         </ul>
         <% if (unpaidEntries.length > 0) { %>
           <a class="btn btn-secondary" target="_blank" rel="noopener" style="margin-top:0.5rem;"
-            href="https://wa.me/?text=<%- encodeURIComponent(`💰 Entry fee reminder — ${comp.name} (£${feeAmount.toFixed(2)})\nStill to pay: ${unpaidEntries.map(r => r.player_name).join(', ')}\n${comp.entry_fee_link}`) %>">
+            href="https://wa.me/?text=<%- encodeURIComponent(`💰 Entry fee reminder — ${comp.name} (£${feeAmount.toFixed(2)})\nStill to pay: ${unpaidEntries.map(e => e.player_name).join(', ')}\n${comp.entry_fee_link}`) %>">
             Message unpaid players on WhatsApp
           </a>
         <% } else { %>
@@ -88,7 +88,7 @@
       document.querySelectorAll('.paid-toggle').forEach((box) => {
         box.addEventListener('change', async () => {
           box.disabled = true;
-          await fetch(`/admin/rounds/${box.dataset.roundId}/toggle-paid`, { method: 'POST' });
+          await fetch(`/admin/entries/${box.dataset.entryId}/toggle-paid`, { method: 'POST' });
           window.location.reload();
         });
       });
@@ -121,6 +121,17 @@
         <strong><%= myRound.stableford_points %></strong>
       </div>
     </div>
+  </div>
+<% } else if (comp.status === 'open' && !hasEntered) { %>
+  <div class="card">
+    <h2 class="mt-0">Ready to play?</h2>
+    <p class="muted" style="margin-top:-0.5rem;font-size:0.88rem;">
+      Enter this competition to appear on the leaderboard<% if (comp.entry_fee_enabled) { %> and let the admin know you're in for the entry fee<% } %> —
+      you can submit your score any time before it closes.
+    </p>
+    <form method="POST" action="/competitions/<%= comp.id %>/enter">
+      <button type="submit">Enter competition</button>
+    </form>
   </div>
 <% } else if (comp.status === 'open') { %>
   <div class="card">
@@ -239,8 +250,8 @@
     Only the top 3 earn Order of Merit points for the season standings — 5 for 1st, 3 for 2nd, 1 for 3rd. Ties are
     split by a back-9 countback (then back 6, back 3, last hole).
   </p>
-  <% if (ranked.length === 0) { %>
-    <p class="muted">No scores entered yet.</p>
+  <% if (ranked.length === 0 && pendingEntries.length === 0) { %>
+    <p class="muted">No entries yet.</p>
   <% } else { %>
     <div class="table-scroll">
       <table>
@@ -281,6 +292,19 @@
               <% if (currentPlayer.is_admin) { %>
                 <td style="text-align:right;"><a class="muted" style="font-size:0.8rem;" href="/admin/rounds/<%= r.id %>/edit">Edit</a></td>
               <% } %>
+            </tr>
+          <% }) %>
+          <% pendingEntries.forEach(e => { %>
+            <tr class="<%= e.player_id === currentPlayer.id ? 'me' : '' %>">
+              <td>–</td>
+              <td><%= e.player_name %> <span class="muted" style="font-size:0.8rem;">(entered, not yet played)</span></td>
+              <% if (courses.length > 1) { %><td class="muted">–</td><% } %>
+              <td class="num">0</td>
+              <td class="num">–</td>
+              <td class="num">0</td>
+              <td class="num">0</td>
+              <td></td>
+              <% if (currentPlayer.is_admin) { %><td></td><% } %>
             </tr>
           <% }) %>
         </tbody>
@@ -326,7 +350,7 @@
 
 <a class="muted" href="/dashboard">&larr; Back to all competitions</a>
 
-<% if (comp.status === 'open' && !myRound && selectedCourse) { %>
+<% if (comp.status === 'open' && hasEntered && !myRound && selectedCourse) { %>
   <script>
     // Live in-page preview only — mirrors the pure-math parts of
     // lib/scoring.js so the running total updates instantly as you tap.

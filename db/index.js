@@ -144,9 +144,32 @@ ALTER TABLE competitions ADD COLUMN IF NOT EXISTS entry_fee_enabled BOOLEAN NOT 
 ALTER TABLE competitions ADD COLUMN IF NOT EXISTS entry_fee_amount NUMERIC;
 ALTER TABLE competitions ADD COLUMN IF NOT EXISTS entry_fee_link TEXT;
 
--- Whether the player who submitted this round has paid the competition's
--- entry fee. Meaningless (and ignored) when the competition has no fee.
+-- Superseded by the "entries" table below — kept in place (unused) rather
+-- than dropped, since dropping columns is a destructive schema change.
 ALTER TABLE rounds ADD COLUMN IF NOT EXISTS entry_fee_paid BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- A player "entering" a competition is now a separate step from submitting a
+-- score: clicking "Enter competition" creates a row here immediately, so
+-- admins can see (and chase entry-fee payment for) everyone who's committed
+-- to playing before any scores come in. Submitting a score auto-creates the
+-- entry too, for players who go straight to scoring without entering first.
+CREATE TABLE IF NOT EXISTS entries (
+  id SERIAL PRIMARY KEY,
+  competition_id INTEGER NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  entered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  entry_fee_paid BOOLEAN NOT NULL DEFAULT FALSE,
+  UNIQUE(competition_id, player_id)
+);
+
+-- One-time backfill: every existing round implies its player had already
+-- "entered", carrying over whatever payment status was recorded on the old
+-- rounds.entry_fee_paid column. ON CONFLICT DO NOTHING makes this safe to
+-- leave in place — it only fills in rows that don't exist yet, so it can
+-- never clobber a payment status an admin sets afterwards via the app.
+INSERT INTO entries (competition_id, player_id, entry_fee_paid)
+SELECT competition_id, player_id, entry_fee_paid FROM rounds
+ON CONFLICT (competition_id, player_id) DO NOTHING;
 
 INSERT INTO competition_courses (competition_id, course_id)
 SELECT id, course_id FROM competitions WHERE course_id IS NOT NULL
