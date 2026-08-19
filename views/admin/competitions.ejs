@@ -39,7 +39,7 @@
               <td><span class="badge <%= c.status === 'closed' ? 'closed' : '' %>"><%= c.status === 'open' ? 'Open' : 'Closed' %></span></td>
               <td style="text-align:right;white-space:nowrap;">
                 <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/toggle-status">
-                  <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;"><%= c.status === 'open' ? 'Close' : 'Reopen' %></button>
+                  <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;"><%= c.status === 'open' ? 'End competition' : 'Reopen' %></button>
                 </form>
                 <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/delete"
                   onsubmit="return confirm('Delete &quot;<%= c.name %>&quot; and every score submitted for it? This can\'t be undone.');">

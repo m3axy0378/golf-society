@@ -18,7 +18,7 @@
     <span class="badge <%= comp.status === 'closed' ? 'closed' : '' %>"><%= comp.status === 'open' ? 'Open for entry' : 'Closed' %></span>
     <% if (currentPlayer.is_admin) { %>
       <form method="POST" action="/admin/competitions/<%= comp.id %>/toggle-status" class="inline-form">
-        <button type="submit" class="btn-secondary"><%= comp.status === 'open' ? 'Close competition' : 'Reopen' %></button>
+        <button type="submit" class="btn-secondary"><%= comp.status === 'open' ? 'End competition' : 'Reopen' %></button>
       </form>
     <% } %>
   </div>
