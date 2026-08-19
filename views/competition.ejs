@@ -15,7 +15,7 @@
       <% if (comp.type === 'sprint') { %> · <span class="muted">Casual — doesn't count towards handicap or season standings</span><% } %>
     </p>
   </div>
-  <div style="display:flex;align-items:center;gap:0.5rem;">
+  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;">
     <span class="badge <%= comp.status === 'closed' ? 'closed' : '' %>"><%= comp.status === 'open' ? 'Open for entry' : 'Closed' %></span>
     <% if (currentPlayer.is_admin) { %>
       <form method="POST" action="/admin/competitions/<%= comp.id %>/notify" class="inline-form"

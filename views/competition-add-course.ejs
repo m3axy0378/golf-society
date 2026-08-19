@@ -15,7 +15,7 @@
       Pick a course someone's already added for a previous competition — no need to search again.
     </p>
     <form method="POST" action="/competitions/<%= comp.id %>/add-existing-course" style="display:flex;gap:0.5rem;">
-      <select name="courseId" required style="flex:1;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
+      <select name="courseId" required style="flex:1;min-width:0;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
         <option value="">— Choose a saved course —</option>
         <% availableCourses.forEach(c => { %>
           <option value="<%= c.id %>"><%= c.name %> (<%= c.tee_name %> tees, par <%= c.par %>)</option>
@@ -31,7 +31,7 @@
 <div class="card" style="max-width:640px;">
   <form method="GET" action="/competitions/<%= comp.id %>/add-course" style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
     <input type="text" name="q" value="<%= q %>" placeholder="Club name, e.g. Wentworth"
-      style="flex:1;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
+      style="flex:1;min-width:0;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
     <button type="submit" class="btn-secondary">Search</button>
   </form>
 
