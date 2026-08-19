@@ -137,6 +137,13 @@ ALTER TABLE rounds ADD COLUMN IF NOT EXISTS marker_id INTEGER REFERENCES players
 -- league, but at double points towards the season Order of Merit.
 ALTER TABLE competitions ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'league' CHECK (type IN ('league', 'sprint', 'major'));
 
+-- Optional paid entry. The app never touches money or card details itself —
+-- entry_fee_link just points at a payment page the admin sets up elsewhere
+-- (PayPal.me, a Stripe Payment Link, etc.) and players are sent there to pay.
+ALTER TABLE competitions ADD COLUMN IF NOT EXISTS entry_fee_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE competitions ADD COLUMN IF NOT EXISTS entry_fee_amount NUMERIC;
+ALTER TABLE competitions ADD COLUMN IF NOT EXISTS entry_fee_link TEXT;
+
 INSERT INTO competition_courses (competition_id, course_id)
 SELECT id, course_id FROM competitions WHERE course_id IS NOT NULL
 ON CONFLICT DO NOTHING;

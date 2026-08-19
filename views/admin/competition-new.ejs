@@ -37,10 +37,37 @@
           <option value="sprint">9 Hole Sprint — casual, doesn't count towards handicap or season</option>
         </select>
       </label>
+
+      <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+        <input type="checkbox" name="entryFeeEnabled" id="entry-fee-toggle" style="width:auto;margin:0;">
+        Charge an entry fee for this competition
+      </label>
+      <div id="entry-fee-fields" style="display:none;margin-bottom:1rem;">
+        <div class="grid-2">
+          <label>Amount (£) <input type="number" step="0.01" min="0.01" name="entryFeeAmount" placeholder="e.g. 5.00"></label>
+          <label>Payment link <input type="url" name="entryFeeLink" placeholder="https://paypal.me/..."></label>
+        </div>
+        <p class="muted" style="font-size:0.82rem;margin:0;">
+          Set this up yourself first (PayPal.me, a Stripe Payment Link, etc.) — the app just links players to it,
+          it doesn't collect payment.
+        </p>
+      </div>
+
       <button type="submit">Create competition</button>
     </form>
   <% } %>
 </div>
+
+<script>
+  const feeToggle = document.getElementById('entry-fee-toggle');
+  if (feeToggle) {
+    const feeFields = document.getElementById('entry-fee-fields');
+    feeToggle.addEventListener('change', () => {
+      feeFields.style.display = feeToggle.checked ? '' : 'none';
+      feeFields.querySelectorAll('input').forEach((inp) => { inp.required = feeToggle.checked; });
+    });
+  }
+</script>
 
 <p><a class="muted" href="/admin/courses/new">+ Add another course</a></p>
 

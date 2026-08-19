@@ -344,10 +344,22 @@ router.post(
     const courseIds = [].concat(req.body.courseIds || []).map((id) => parseInt(id, 10)).filter(Number.isFinite);
     const { rows: courses } = await db.query('SELECT * FROM courses ORDER BY name');
 
-    if (!name || !compDate || courseIds.length === 0 || !['stableford', 'net_stroke', 'gross_stroke'].includes(format)) {
+    const entryFeeEnabled = req.body.entryFeeEnabled === 'on';
+    const entryFeeAmount = entryFeeEnabled ? parseFloat(req.body.entryFeeAmount) : null;
+    const entryFeeLink = entryFeeEnabled ? (req.body.entryFeeLink || '').trim() : null;
+
+    if (
+      !name ||
+      !compDate ||
+      courseIds.length === 0 ||
+      !['stableford', 'net_stroke', 'gross_stroke'].includes(format) ||
+      (entryFeeEnabled && (!Number.isFinite(entryFeeAmount) || entryFeeAmount <= 0 || !/^https?:\/\//.test(entryFeeLink)))
+    ) {
       return res.render('admin/competition-new', {
         courses,
-        error: 'Please fill in every field and choose at least one course.',
+        error: entryFeeEnabled
+          ? 'Please fill in every field, choose at least one course, and give the entry fee a valid amount and a payment link starting with http(s)://.'
+          : 'Please fill in every field and choose at least one course.',
         courseAdded: false,
       });
     }
@@ -355,8 +367,9 @@ router.post(
     let compId;
     await db.withTransaction(async (client) => {
       const { rows } = await client.query(
-        'INSERT INTO competitions (name, comp_date, format, type) VALUES ($1, $2, $3, $4) RETURNING id',
-        [name.trim(), compDate, format, type]
+        `INSERT INTO competitions (name, comp_date, format, type, entry_fee_enabled, entry_fee_amount, entry_fee_link)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [name.trim(), compDate, format, type, entryFeeEnabled, entryFeeAmount, entryFeeLink]
       );
       compId = rows[0].id;
       for (const courseId of courseIds) {

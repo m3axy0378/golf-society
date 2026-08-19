@@ -61,6 +61,7 @@
         <div class="muted" style="font-size:0.85rem;">
           Comp Closes - <%= new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
           · <%= c.course_names %> · <%= FORMAT_LABELS[c.format] %>
+          <% if (c.entry_fee_enabled) { %> · Entry fee £<%= parseFloat(c.entry_fee_amount).toFixed(2) %><% } %>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:0.5rem;">

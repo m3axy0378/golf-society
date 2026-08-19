@@ -37,6 +37,13 @@
   </div>
 </div>
 
+<% if (comp.entry_fee_enabled) { %>
+  <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+    <p style="margin:0;">Entry fee: <strong>£<%= parseFloat(comp.entry_fee_amount).toFixed(2) %></strong></p>
+    <a class="btn" target="_blank" rel="noopener" href="<%= comp.entry_fee_link %>">Pay entry fee</a>
+  </div>
+<% } %>
+
 <% if (error) { %><div class="error-box"><%= error %></div><% } %>
 
 <% if (comp.status === 'open' && myRound) { %>
