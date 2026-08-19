@@ -17,30 +17,25 @@
   <% if (courses.length === 0) { %>
     <p class="muted">No courses added yet.</p>
   <% } else { %>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th>Course</th><th>Tees</th><th class="num">Par</th><th class="num">CR</th><th class="num">SR</th><th class="num">Holes</th><th></th></tr></thead>
-        <tbody>
-          <% courses.forEach(c => { %>
-            <tr>
-              <td><%= c.name %></td>
-              <td class="muted"><%= c.tee_name %></td>
-              <td class="num"><%= c.par %></td>
-              <td class="num"><%= c.course_rating.toFixed(1) %></td>
-              <td class="num"><%= c.slope_rating %></td>
-              <td class="num"><%= c.holes_count %></td>
-              <td style="text-align:right;white-space:nowrap;">
-                <a class="muted" style="font-size:0.85rem;margin-right:0.75rem;" href="/admin/courses/<%= c.id %>/edit">Edit</a>
-                <form class="inline-form" method="POST" action="/admin/courses/<%= c.id %>/delete"
-                  onsubmit="return confirm('Delete &quot;<%= c.name %>&quot;? This only works if it isn\'t linked to any competition.');">
-                  <button type="submit" class="btn-danger" style="padding:0.25rem 0.6rem;">Delete</button>
-                </form>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+    <ul class="list-plain">
+      <% courses.forEach(c => { %>
+        <li style="flex-direction:column;align-items:stretch;gap:0.6rem;">
+          <div>
+            <strong><%= c.name %></strong>
+            <div class="muted" style="font-size:0.85rem;margin-top:0.15rem;">
+              <%= c.tee_name %> tees · Par <%= c.par %> · CR <%= c.course_rating.toFixed(1) %> · SR <%= c.slope_rating %> · <%= c.holes_count %> holes
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.6rem;">
+            <a class="btn btn-secondary" style="padding:0.25rem 0.6rem;" href="/admin/courses/<%= c.id %>/edit">Edit</a>
+            <form class="inline-form" method="POST" action="/admin/courses/<%= c.id %>/delete"
+              onsubmit="return confirm('Delete &quot;<%= c.name %>&quot;? This only works if it isn\'t linked to any competition.');">
+              <button type="submit" class="btn-danger" style="padding:0.25rem 0.6rem;">Delete</button>
+            </form>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
   <% } %>
 </div>
 
