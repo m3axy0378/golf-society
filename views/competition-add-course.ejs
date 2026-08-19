@@ -8,6 +8,26 @@
 
 <% if (apiError) { %><div class="error-box"><%= apiError %></div><% } %>
 
+<% if (availableCourses.length > 0) { %>
+  <div class="card" style="max-width:640px;">
+    <p style="font-size:0.92rem;margin-bottom:0.3rem;">Already saved in Tee League</p>
+    <p class="muted" style="font-size:0.82rem;margin:0 0 0.5rem;">
+      Pick a course someone's already added for a previous competition — no need to search again.
+    </p>
+    <form method="POST" action="/competitions/<%= comp.id %>/add-existing-course" style="display:flex;gap:0.5rem;">
+      <select name="courseId" required style="flex:1;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
+        <option value="">— Choose a saved course —</option>
+        <% availableCourses.forEach(c => { %>
+          <option value="<%= c.id %>"><%= c.name %> (<%= c.tee_name %> tees, par <%= c.par %>)</option>
+        <% }) %>
+      </select>
+      <button type="submit" class="btn-secondary">Add</button>
+    </form>
+  </div>
+
+  <p class="muted" style="text-align:center;margin:0.5rem 0;">or search for a different course</p>
+<% } %>
+
 <div class="card" style="max-width:640px;">
   <form method="GET" action="/competitions/<%= comp.id %>/add-course" style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
     <input type="text" name="q" value="<%= q %>" placeholder="Club name, e.g. Wentworth"

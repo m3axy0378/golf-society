@@ -332,6 +332,13 @@ router.get(
       apiError = 'Course search is temporarily unavailable right now — please try again shortly.';
     }
 
+    const { rows: availableCourses } = await db.query(
+      `SELECT * FROM courses
+       WHERE id NOT IN (SELECT course_id FROM competition_courses WHERE competition_id = $1)
+       ORDER BY name`,
+      [comp.id]
+    );
+
     res.render('competition-add-course', {
       comp,
       q: q || '',
@@ -342,7 +349,34 @@ router.get(
       clubResults,
       clubCourses,
       apiError,
+      availableCourses,
     });
+  })
+);
+
+router.post(
+  '/competitions/:id/add-existing-course',
+  requireLogin,
+  asyncHandler(async (req, res) => {
+    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
+    const comp = compRows[0];
+    if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
+    if (comp.status === 'closed') {
+      return res.status(400).render('error', { message: 'This competition is closed, so no more courses can be added.' });
+    }
+
+    const courseId = parseInt(req.body.courseId, 10);
+    const { rows: courseRows } = await db.query('SELECT id FROM courses WHERE id = $1', [courseId]);
+    if (!courseRows[0]) {
+      return res.status(400).render('error', { message: 'Please choose a course to add.' });
+    }
+
+    await db.query('INSERT INTO competition_courses (competition_id, course_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [
+      comp.id,
+      courseId,
+    ]);
+
+    res.redirect(`/competitions/${comp.id}?course=${courseId}`);
   })
 );
 
