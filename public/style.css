@@ -392,3 +392,4 @@ button:focus-visible, .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px 
   margin-top: 2rem;
 }
 .site-footer .accent { color: var(--color-gold); }
+.site-footer .logo-wordmark { text-transform: none; }
