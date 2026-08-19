@@ -210,7 +210,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .leaderboard-row.rank-1 .rank-num { color: var(--color-gold); }
 .leaderboard-stats { display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; }
 .leaderboard-stats .stat-label { display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
-.leaderboard-stats strong { font-size: 1rem; }
+.leaderboard-stats strong { font-size: 1.35rem; font-weight: 800; color: var(--color-navy); font-variant-numeric: tabular-nums; }
 
 /* ---- Forms / inputs ------------------------------------------------------
    Subtle border, gold focus ring, per brand spec. */
