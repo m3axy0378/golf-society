@@ -84,32 +84,34 @@
   <% if (ranked.length === 0) { %>
     <p class="muted">No scores entered yet.</p>
   <% } else { %>
-    <table>
-      <thead>
-        <tr>
-          <th>Rank</th>
-          <th>Player</th>
-          <% if (courses.length > 1) { %><th>Course</th><% } %>
-          <th class="num">Gross</th>
-          <th class="num">Course Hcp</th>
-          <th class="num">Net</th>
-          <th class="num">Points</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% ranked.forEach(r => { %>
-          <tr class="<%= r.player_id === currentPlayer.id ? 'me' : '' %> <%= r.rank === 1 ? 'rank-1' : '' %>">
-            <td><%= r.rank %></td>
-            <td><%= r.player_name %></td>
-            <% if (courses.length > 1) { %><td class="muted" style="font-size:0.85rem;"><%= r.course_name %></td><% } %>
-            <td class="num" style="<%= comp.format === 'gross_stroke' ? 'font-weight:700' : '' %>"><%= r.gross_total %></td>
-            <td class="num"><%= r.course_handicap %></td>
-            <td class="num" style="<%= comp.format === 'net_stroke' ? 'font-weight:700' : '' %>"><%= r.net_total %></td>
-            <td class="num" style="<%= comp.format === 'stableford' ? 'font-weight:700' : '' %>"><%= r.stableford_points %></td>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <% if (courses.length > 1) { %><th>Course</th><% } %>
+            <th class="num">Gross</th>
+            <th class="num">Course Hcp</th>
+            <th class="num">Net</th>
+            <th class="num">Points</th>
           </tr>
-        <% }) %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% ranked.forEach(r => { %>
+            <tr class="<%= r.player_id === currentPlayer.id ? 'me' : '' %> <%= r.rank === 1 ? 'rank-1' : '' %>">
+              <td><%= r.rank %></td>
+              <td><%= r.player_name %></td>
+              <% if (courses.length > 1) { %><td class="muted" style="font-size:0.85rem;"><%= r.course_name %></td><% } %>
+              <td class="num" style="<%= comp.format === 'gross_stroke' ? 'font-weight:700' : '' %>"><%= r.gross_total %></td>
+              <td class="num"><%= r.course_handicap %></td>
+              <td class="num" style="<%= comp.format === 'net_stroke' ? 'font-weight:700' : '' %>"><%= r.net_total %></td>
+              <td class="num" style="<%= comp.format === 'stableford' ? 'font-weight:700' : '' %>"><%= r.stableford_points %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
   <% } %>
 </div>
 

@@ -6,34 +6,36 @@
 <% if (message) { %><div class="success-box"><%= message %></div><% } %>
 
 <div class="card">
-  <table>
-    <thead>
-      <tr><th>Name</th><th>Email</th><th class="num">Handicap Index</th><th>Role</th><th></th></tr>
-    </thead>
-    <tbody>
-      <% players.forEach(p => { %>
-        <tr>
-          <td><%= p.name %></td>
-          <td class="muted"><%= p.email %></td>
-          <td class="num">
-            <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/handicap" style="display:flex;gap:0.4rem;justify-content:flex-end;">
-              <input type="number" step="0.1" name="handicapIndex" value="<%= p.handicap_index %>" style="width:70px;padding:0.25rem 0.4rem;border:1px solid var(--border);border-radius:6px;">
-              <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Save</button>
-            </form>
-          </td>
-          <td><% if (p.is_admin) { %><span class="badge admin">Admin</span><% } else { %><span class="muted">Player</span><% } %></td>
-          <td style="text-align:right;white-space:nowrap;">
-            <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/toggle-admin">
-              <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;"><%= p.is_admin ? 'Remove admin' : 'Make admin' %></button>
-            </form>
-            <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/delete" onsubmit="return confirm('Remove <%= p.name %> and all their scores?');">
-              <button type="submit" class="btn-danger" style="padding:0.25rem 0.6rem;">Remove</button>
-            </form>
-          </td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Email</th><th class="num">Handicap Index</th><th>Role</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% players.forEach(p => { %>
+          <tr>
+            <td><%= p.name %></td>
+            <td class="muted"><%= p.email %></td>
+            <td class="num">
+              <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/handicap" style="display:flex;gap:0.4rem;justify-content:flex-end;">
+                <input type="number" step="0.1" name="handicapIndex" value="<%= p.handicap_index %>" style="width:70px;padding:0.25rem 0.4rem;border:1px solid var(--border);border-radius:6px;">
+                <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Save</button>
+              </form>
+            </td>
+            <td><% if (p.is_admin) { %><span class="badge admin">Admin</span><% } else { %><span class="muted">Player</span><% } %></td>
+            <td style="text-align:right;white-space:nowrap;">
+              <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/toggle-admin">
+                <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;"><%= p.is_admin ? 'Remove admin' : 'Make admin' %></button>
+              </form>
+              <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/delete" onsubmit="return confirm('Remove <%= p.name %> and all their scores?');">
+                <button type="submit" class="btn-danger" style="padding:0.25rem 0.6rem;">Remove</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <div class="card" style="max-width:480px;">

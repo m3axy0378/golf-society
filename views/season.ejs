@@ -11,26 +11,28 @@
   <% if (standings.length === 0) { %>
     <p class="muted">No results yet — once a competition has scores, standings will appear here.</p>
   <% } else { %>
-    <table>
-      <thead>
-        <tr>
-          <th>Rank</th>
-          <th>Player</th>
-          <th class="num">Points</th>
-          <th class="num">Played</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% standings.forEach((s, i) => { %>
-          <tr class="<%= s.player_id === currentPlayer.id ? 'me' : '' %> <%= i === 0 ? 'rank-1' : '' %>">
-            <td><%= i + 1 %></td>
-            <td><%= s.player_name %></td>
-            <td class="num"><%= s.totalPoints %></td>
-            <td class="num"><%= s.competitionsPlayed %></td>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th class="num">Points</th>
+            <th class="num">Played</th>
           </tr>
-        <% }) %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% standings.forEach((s, i) => { %>
+            <tr class="<%= s.player_id === currentPlayer.id ? 'me' : '' %> <%= i === 0 ? 'rank-1' : '' %>">
+              <td><%= i + 1 %></td>
+              <td><%= s.player_name %></td>
+              <td class="num"><%= s.totalPoints %></td>
+              <td class="num"><%= s.competitionsPlayed %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
   <% } %>
 </div>
 

@@ -183,6 +183,7 @@ h3 { font-size: 1.05rem; color: var(--color-navy); }
 
 /* ---- Tables --------------------------------------------------------------
    Navy base for header cells, gold for important / selected numbers. */
+.table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
 th, td { text-align: left; padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
 th { color: var(--color-navy); font-weight: 700; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.05em; }
