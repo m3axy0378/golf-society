@@ -1,13 +1,14 @@
-// Render-level tests for player-facing pages, covering two regressions that
-// have no other test coverage: the Play list no longer showing a
-// competition's course name (that only appears once you're inside it), and
-// the "Play anywhere. Compete everywhere." tagline footer that got
-// accidentally suppressed on every page by an earlier redesign pass and was
-// then restored. Unlike test/adminRoutes.test.js (which only covers
-// JSON/redirect routes, since res.render needs the real view engine), these
-// spin up the actual EJS view engine against the real views/ directory so
-// the rendered HTML can be asserted on directly, with db.query mocked the
-// same way via t.mock.method.
+// Render-level tests for player-facing pages, covering behaviour that has no
+// other test coverage: the Play list no longer showing a competition's
+// course name (that only appears once you're inside it); the
+// "Play anywhere. Compete everywhere." tagline footer that got accidentally
+// suppressed on every page by an earlier redesign pass and was then
+// restored; and test-user accounts (players.is_test_user) being excluded
+// from the season standings and the handicaps list. Unlike
+// test/adminRoutes.test.js (which only covers JSON/redirect routes, since
+// res.render needs the real view engine), these spin up the actual EJS view
+// engine against the real views/ directory so the rendered HTML can be
+// asserted on directly, with db.query mocked the same way via t.mock.method.
 const path = require('node:path');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -126,4 +127,40 @@ test('every page footer shows the tagline in full, with "Compete" in the gold ac
 
   assert.match(html, /<footer class="site-footer">/);
   assert.match(html, /Play anywhere\. <span class="accent">Compete<\/span> everywhere\./);
+});
+
+test('season standings exclude test users at the query level', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const queryMock = makeQueryMock([
+    { match: "type != 'sprint'", result: { rows: [] } },
+    { match: 'FROM rounds r JOIN players p ON p.id = r.player_id', result: { rows: [] } },
+  ]);
+  t.mock.method(db, 'query', queryMock);
+
+  const res = await fetch(`${app.baseUrl}/season`);
+  assert.equal(res.status, 200);
+
+  const roundsQuery = queryMock.calls.find((c) => c.text.includes('FROM rounds r JOIN players p ON p.id = r.player_id'));
+  assert.ok(roundsQuery.text.includes('is_test_user = FALSE'));
+});
+
+test('/handicaps excludes test users from the players list, both in the query and on the page', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const queryMock = makeQueryMock([
+    { match: 'FROM players', result: { rows: [{ id: 1, name: 'Real Player', handicap_index: 12.3 }] } },
+    { match: 'FROM rounds r', result: { rows: [] } },
+  ]);
+  t.mock.method(db, 'query', queryMock);
+
+  const res = await fetch(`${app.baseUrl}/handicaps`);
+  assert.equal(res.status, 200);
+  const html = await res.text();
+  assert.match(html, /Real Player/);
+
+  const playersQuery = queryMock.calls.find((c) => c.text.includes('FROM players'));
+  assert.ok(playersQuery.text.includes('is_test_user = FALSE'));
 });

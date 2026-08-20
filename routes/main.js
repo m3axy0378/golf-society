@@ -112,7 +112,7 @@ async function getRoundsForCompetition(competitionId) {
      FROM rounds r
      JOIN players p ON p.id = r.player_id
      LEFT JOIN courses co ON co.id = r.course_id
-     WHERE r.competition_id = $1`,
+     WHERE r.competition_id = $1 AND p.is_test_user = FALSE`,
     [competitionId]
   );
   return attachHoleData(rows);
@@ -136,7 +136,8 @@ async function getSeasonStandings() {
   );
   const { rows: allRoundsRaw } = await db.query(
     `SELECT r.*, p.name AS player_name
-     FROM rounds r JOIN players p ON p.id = r.player_id`
+     FROM rounds r JOIN players p ON p.id = r.player_id
+     WHERE p.is_test_user = FALSE`
   );
   const allRounds = await attachHoleData(allRoundsRaw);
   return { competitions, standings: computeSeasonStandings(competitions, allRounds) };
@@ -289,7 +290,7 @@ router.get(
     // a score yet or not — drives the "entered, not yet played" rows at the
     // bottom of the leaderboard and the entry-fee payment tracking below.
     const { rows: allEntries } = await db.query(
-      `SELECT e.id, e.player_id, p.name AS player_name, e.entry_fee_paid, e.entered_at, r.id AS round_id
+      `SELECT e.id, e.player_id, p.name AS player_name, p.is_test_user, e.entry_fee_paid, e.entered_at, r.id AS round_id
        FROM entries e
        JOIN players p ON p.id = e.player_id
        LEFT JOIN rounds r ON r.competition_id = e.competition_id AND r.player_id = e.player_id
@@ -297,7 +298,12 @@ router.get(
        ORDER BY e.entered_at`,
       [comp.id]
     );
-    const pendingEntries = allEntries.filter((e) => !e.round_id);
+    // Test users can enter like anyone else (useful for exercising the entry
+    // flow itself), but the public "entered, not yet played" list on the
+    // leaderboard shouldn't show them — allEntries stays unfiltered since
+    // it also drives the admin-only entry-fee tracking below and this
+    // player's own hasEntered check.
+    const pendingEntries = allEntries.filter((e) => !e.round_id && !e.is_test_user);
     const hasEntered = allEntries.some((e) => e.player_id === req.session.playerId);
 
     const { rows: pairingRows } = await db.query(
@@ -688,7 +694,8 @@ async function getStatsData(playerId, currentHandicapIndex) {
      FROM rounds r
      JOIN competitions c ON c.id = r.competition_id
      JOIN players p ON p.id = r.player_id
-     WHERE r.competition_id IN (SELECT competition_id FROM rounds WHERE player_id = $1) AND r.player_id != $1`,
+     WHERE r.competition_id IN (SELECT competition_id FROM rounds WHERE player_id = $1)
+       AND r.player_id != $1 AND p.is_test_user = FALSE`,
     [playerId]
   );
   const myRoundsByComp = new Map(myRounds.map((r) => [r.competition_id, r]));
@@ -773,7 +780,7 @@ router.get(
   '/handicaps',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: players } = await db.query('SELECT id, name, handicap_index FROM players ORDER BY name');
+    const { rows: players } = await db.query('SELECT id, name, handicap_index FROM players WHERE is_test_user = FALSE ORDER BY name');
     const { rows: roundRows } = await db.query(
       `SELECT r.player_id, r.gross_total, r.handicap_index_used, r.submitted_at, co.course_rating, co.slope_rating
        FROM rounds r

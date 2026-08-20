@@ -248,6 +248,7 @@ h3 { font-size: 1.05rem; color: var(--color-navy); }
 }
 .badge.closed { background: #f3e7e4; color: var(--color-danger); }
 .badge.admin { background: #f7edd8; color: #8a6a1f; }
+.badge.test { background: #e6eaf0; color: #4a5a70; }
 
 /* ---- Tables --------------------------------------------------------------
    Navy base for header cells, gold for important / selected numbers. */
@@ -612,6 +613,7 @@ body.scoreboard-page { background: var(--color-navy); }
 .scoreboard-view .badge { background: rgba(13, 92, 70, 0.25); color: var(--sb-green-light); }
 .scoreboard-view .badge.closed { background: rgba(166, 58, 47, 0.2); color: #f0b8b0; }
 .scoreboard-view .badge.admin { background: rgba(201, 162, 74, 0.18); color: var(--color-gold-light); }
+.scoreboard-view .badge.test { background: rgba(255, 255, 255, 0.12); color: var(--sb-muted); }
 
 .scoreboard-view .list-plain li { border-color: var(--sb-border); }
 .scoreboard-view input[type="checkbox"] { accent-color: var(--color-gold); }

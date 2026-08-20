@@ -20,6 +20,7 @@
           <div>
             <strong><%= p.name %></strong>
             <% if (p.is_admin) { %><span class="badge admin">Admin</span><% } %>
+            <% if (p.is_test_user) { %><span class="badge test">Test user</span><% } %>
             <div class="muted" style="font-size:0.85rem;margin-top:0.15rem;"><%= p.email %></div>
           </div>
           <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/handicap" style="display:flex;align-items:center;gap:0.4rem;">
@@ -31,6 +32,9 @@
         <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
           <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/toggle-admin">
             <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;"><%= p.is_admin ? 'Remove admin' : 'Make admin' %></button>
+          </form>
+          <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/toggle-test-user">
+            <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;"><%= p.is_test_user ? 'Remove test user' : 'Make test user' %></button>
           </form>
           <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/delete" onsubmit="return confirm('Remove <%= p.name %> and all their scores?');">
             <button type="submit" class="btn-danger" style="padding:0.25rem 0.6rem;">Remove</button>
@@ -55,9 +59,17 @@
     <label style="display:flex;align-items:center;gap:0.5rem;">
       <input type="checkbox" name="isAdmin" style="width:auto;margin:0;"> Make this player an admin too
     </label>
+    <label style="display:flex;align-items:center;gap:0.5rem;">
+      <input type="checkbox" name="isTestUser" style="width:auto;margin:0;"> Test user (for manual testing)
+    </label>
     <button type="submit">Add player</button>
   </form>
   <p class="muted" style="font-size:0.85rem;">Share the email + temporary password with them so they can log in (they can't change their own password yet — ask them to keep it, or set a new one here any time).</p>
+  <p class="muted" style="font-size:0.85rem;">
+    A test user works exactly like any other player — enter competitions, submit scores, everything — but is left out
+    of every leaderboard, the season standings and Order of Merit, and the handicaps list, so test rounds never show
+    up to real players. Toggle it for an existing player from the list above at any time.
+  </p>
 </div>
 
 <div class="card" style="max-width:480px;">

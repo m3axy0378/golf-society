@@ -1,11 +1,20 @@
 <%- include('partials/header', { title: 'Me', mainClass: 'scoreboard-view' }) %>
 
 <div class="comp-header">
-  <h1 class="comp-title" style="text-transform:none;font-size:1.75rem;"><%= player.name %></h1>
+  <h1 class="comp-title" style="text-transform:none;font-size:1.75rem;">
+    <%= player.name %>
+    <% if (player.is_test_user) { %><span class="badge test" style="vertical-align:middle;">Test user</span><% } %>
+  </h1>
   <p class="comp-meta">
     <%= player.email %>
     <% if (currentPlayer.is_admin) { %> · <a class="sb-link" href="/admin/players">Admin</a><% } %>
   </p>
+  <% if (player.is_test_user) { %>
+    <p class="muted" style="font-size:0.85rem;margin:0.35rem 0 0;">
+      This is a test account — your rounds and name won't show up on any leaderboard, the season standings or the
+      handicaps list.
+    </p>
+  <% } %>
 </div>
 
 <% if (message) { %><div class="success-box" style="margin:0.75rem 20px;"><%= message %></div><% } %>

@@ -233,6 +233,14 @@ CREATE INDEX IF NOT EXISTS idx_entries_player_id ON entries(player_id);
 -- ever) or just the Order of Merit summary (every visit after). Set once a
 -- player's dashboard has rendered for them the first time.
 ALTER TABLE players ADD COLUMN IF NOT EXISTS dashboard_intro_seen BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- An account for admin manual testing: functions exactly like a normal
+-- player (can enter competitions, submit scores, everything) but is
+-- filtered out of every competition leaderboard, the season standings/Order
+-- of Merit, the handicaps list and other players' head-to-head stats, so
+-- test data never pollutes what real players see. Only ever set from the
+-- admin Players page.
+ALTER TABLE players ADD COLUMN IF NOT EXISTS is_test_user BOOLEAN NOT NULL DEFAULT FALSE;
 `;
 
 let readyPromise = null;

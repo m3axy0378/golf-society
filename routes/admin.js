@@ -24,7 +24,7 @@ router.get(
 router.post(
   '/players',
   asyncHandler(async (req, res) => {
-    const { name, email, password, handicapIndex, isAdmin } = req.body;
+    const { name, email, password, handicapIndex, isAdmin, isTestUser } = req.body;
     const { rows: players } = await db.query('SELECT * FROM players ORDER BY name');
 
     if (!name || !email || !password) {
@@ -34,8 +34,8 @@ router.post(
     try {
       const hash = bcrypt.hashSync(password, 10);
       await db.query(
-        'INSERT INTO players (name, email, password_hash, handicap_index, is_admin) VALUES ($1, $2, $3, $4, $5)',
-        [name.trim(), email.trim().toLowerCase(), hash, parseFloat(handicapIndex) || 28.0, !!isAdmin]
+        'INSERT INTO players (name, email, password_hash, handicap_index, is_admin, is_test_user) VALUES ($1, $2, $3, $4, $5, $6)',
+        [name.trim(), email.trim().toLowerCase(), hash, parseFloat(handicapIndex) || 28.0, !!isAdmin, !!isTestUser]
       );
       res.redirect('/admin/players?added=1');
     } catch (e) {
@@ -65,6 +65,18 @@ router.post(
     const player = rows[0];
     if (player) {
       await db.query('UPDATE players SET is_admin = $1 WHERE id = $2', [!player.is_admin, player.id]);
+    }
+    res.redirect('/admin/players');
+  })
+);
+
+router.post(
+  '/players/:id/toggle-test-user',
+  asyncHandler(async (req, res) => {
+    const { rows } = await db.query('SELECT * FROM players WHERE id = $1', [req.params.id]);
+    const player = rows[0];
+    if (player) {
+      await db.query('UPDATE players SET is_test_user = $1 WHERE id = $2', [!player.is_test_user, player.id]);
     }
     res.redirect('/admin/players');
   })

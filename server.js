@@ -101,7 +101,7 @@ app.use(
     const settingsPromise = db.getSettings({ society_name: 'Golf Society', pairing_sheet_enabled: 'true' });
     if (req.session.playerId) {
       const { rows } = await db.query(
-        'SELECT id, name, email, handicap_index, is_admin, dashboard_intro_seen FROM players WHERE id = $1',
+        'SELECT id, name, email, handicap_index, is_admin, dashboard_intro_seen, is_test_user FROM players WHERE id = $1',
         [req.session.playerId]
       );
       res.locals.currentPlayer = rows[0] || null;
