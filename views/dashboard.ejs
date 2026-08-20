@@ -79,7 +79,7 @@
         <div>
           <% if (kickerText) { %><div class="comp-row-kicker <%= kickerClass %>"><%= kickerText.toUpperCase() %></div><% } %>
           <div class="comp-row-name"><%= c.name %></div>
-          <div class="comp-row-meta"><%= c.course_names %> · <%= FORMAT_LABELS[c.format] %></div>
+          <div class="comp-row-meta"><%= FORMAT_LABELS[c.format] %></div>
         </div>
         <div class="comp-row-days-wrap">
           <% if (c.status === 'closed') { %>

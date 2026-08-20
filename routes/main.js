@@ -149,8 +149,6 @@ router.get(
     const showAll = req.query.filter === 'all';
     const { rows: allCompetitions } = await db.query(
       `SELECT c.*,
-        (SELECT STRING_AGG(co.name, ', ' ORDER BY co.name) FROM competition_courses cc
-          JOIN courses co ON co.id = cc.course_id WHERE cc.competition_id = c.id) AS course_names,
         (SELECT COUNT(*) FROM rounds r WHERE r.competition_id = c.id) AS rounds_count
        FROM competitions c
        ORDER BY c.comp_date ASC`
