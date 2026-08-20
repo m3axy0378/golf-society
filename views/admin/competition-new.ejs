@@ -1,8 +1,8 @@
-<%- include('../partials/header', { title: 'New competition' }) %>
+<%- include('../partials/header', { title: 'New competition', mainClass: 'scoreboard-view' }) %>
 
-<h1 class="mt-0">New competition</h1>
-<% if (courseAdded) { %><div class="success-box">Course saved. Now set up the competition.</div><% } %>
-<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+<h1 style="margin:0.75rem 20px 0;">New competition</h1>
+<% if (courseAdded) { %><div class="success-box" style="margin:0.75rem 20px;">Course saved. Now set up the competition.</div><% } %>
+<% if (error) { %><div class="error-box" style="margin:0.75rem 20px;"><%= error %></div><% } %>
 
 <div class="card" style="max-width:520px;">
   <% if (courses.length === 0) { %>
@@ -69,6 +69,6 @@
   }
 </script>
 
-<p><a class="muted" href="/admin/courses/new">+ Add another course</a></p>
+<p style="margin:0.75rem 20px;"><a class="sb-link" href="/admin/courses/new">+ Add another course</a></p>
 
-<%- include('../partials/footer') %>
+<%- include('../partials/footer', { hideTagline: true }) %>

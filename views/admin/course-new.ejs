@@ -1,16 +1,16 @@
-<%- include('../partials/header', { title: 'Add a course' }) %>
+<%- include('../partials/header', { title: 'Add a course', mainClass: 'scoreboard-view' }) %>
 
-<h1 class="mt-0">Add a course</h1>
+<h1 style="margin:0.75rem 20px 0;">Add a course</h1>
 <% if (welcome) { %>
-  <div class="success-box">Society created! Now add the first course your society plays — you can add more any time.</div>
+  <div class="success-box" style="margin:0.75rem 20px;">Society created! Now add the first course your society plays — you can add more any time.</div>
 <% } %>
-<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+<% if (error) { %><div class="error-box" style="margin:0.75rem 20px;"><%= error %></div><% } %>
 
 <div class="card" style="max-width:640px;">
   <% if (typeof ukCourses !== 'undefined' && ukCourses.length) { %>
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.92rem;margin-bottom:0.3rem;">Prefill from a UK course (optional)</label>
-      <select id="uk-course-picker" style="display:block;width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;background:var(--color-white);color:var(--text);">
+      <select id="uk-course-picker" style="display:block;width:100%;padding:0.55rem 0.7rem;border:1px solid var(--sb-border);border-radius:8px;font-size:1rem;">
         <option value="">— Choose a course to prefill —</option>
         <% ukCourses.forEach((c, i) => { %>
           <option value="<%= i %>"><%= c.name %> (<%= c.region %>)</option>
@@ -24,7 +24,7 @@
     </div>
   <% } %>
 
-  <div style="margin-bottom:1.25rem;padding-top:1rem;border-top:1px solid var(--border);">
+  <div style="margin-bottom:1.25rem;padding-top:1rem;border-top:1px solid var(--sb-border);">
     <label style="display:block;font-size:0.92rem;margin-bottom:0.3rem;">Or search the full UK club database</label>
 
     <% if (apiError) { %>
@@ -33,7 +33,7 @@
 
     <form method="GET" action="/admin/courses/new" style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
       <input type="text" name="q" value="<%= q %>" placeholder="Club name, e.g. Wentworth"
-        style="flex:1;min-width:0;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
+        style="flex:1;min-width:0;padding:0.55rem 0.7rem;border:1px solid var(--sb-border);border-radius:8px;font-size:1rem;">
       <button type="submit" class="btn-secondary">Search</button>
     </form>
 
@@ -44,7 +44,7 @@
         <ul class="list-plain" style="margin-bottom:0;">
           <% clubResults.forEach(c => { %>
             <li>
-              <a href="/admin/courses/new?clubId=<%= c.id %>&clubName=<%= encodeURIComponent(c.name) %>&city=<%= encodeURIComponent(c.city || '') %>&county=<%= encodeURIComponent(c.county || '') %>">
+              <a class="sb-link" href="/admin/courses/new?clubId=<%= c.id %>&clubName=<%= encodeURIComponent(c.name) %>&city=<%= encodeURIComponent(c.city || '') %>&county=<%= encodeURIComponent(c.county || '') %>">
                 <%= c.name %>
               </a>
               <span class="muted" style="font-size:0.85rem;"><%= [c.city, c.county].filter(Boolean).join(', ') %></span>
@@ -157,4 +157,4 @@
   <% } %>
 </script>
 
-<%- include('../partials/footer') %>
+<%- include('../partials/footer', { hideTagline: true }) %>

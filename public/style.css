@@ -578,6 +578,64 @@ body.scoreboard-page { background: var(--color-navy); }
 }
 .scoreboard-view .success-box { margin: 0.75rem 20px; }
 
+/* Secondary/danger buttons default to navy-on-white and white-fill, which
+   read as light-mode controls — recoloured here so every admin screen
+   (built from the same .card/.btn-secondary/.badge vocabulary as the rest
+   of the app, just denser) stays legible on the navy ground. */
+.scoreboard-view .btn-secondary {
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.scoreboard-view .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); }
+.scoreboard-view .btn-danger {
+  background: rgba(166, 58, 47, 0.14);
+  color: #f0b8b0;
+  border-color: rgba(166, 58, 47, 0.5);
+}
+.scoreboard-view .btn-danger:hover { background: var(--color-danger); color: white; }
+
+.scoreboard-view .badge { background: rgba(13, 92, 70, 0.25); color: var(--sb-green-light); }
+.scoreboard-view .badge.closed { background: rgba(166, 58, 47, 0.2); color: #f0b8b0; }
+.scoreboard-view .badge.admin { background: rgba(201, 162, 74, 0.18); color: var(--color-gold-light); }
+
+.scoreboard-view .list-plain li { border-color: var(--sb-border); }
+.scoreboard-view input[type="checkbox"] { accent-color: var(--color-gold); }
+
+/* Plain inline links (not styled as a button) need their own colour on a
+   dark ground rather than inheriting body text colour. */
+.sb-link { color: var(--color-gold-light); }
+.sb-link:hover { color: var(--color-gold); }
+
+/* Hole-grid / stepper components (course editor, round correction) default
+   to light-card styling. */
+.scoreboard-view .hole-box { border-color: var(--sb-border); }
+.scoreboard-view .hole-box label { color: var(--sb-muted); }
+.scoreboard-view .score-hole-row { border-color: var(--sb-border); }
+.scoreboard-view .score-hole-row.done { border-color: var(--color-gold); background: rgba(201, 162, 74, 0.1); }
+.scoreboard-view .score-hole-row .hole-num { color: var(--text-primary); }
+.scoreboard-view .score-hole-row .hole-meta { color: var(--sb-muted); }
+.scoreboard-view .stepper button { background: none; border-color: rgba(255, 255, 255, 0.3); color: var(--text-primary); }
+.scoreboard-view .stepper button:hover { background: rgba(255, 255, 255, 0.1); }
+.scoreboard-view .stepper input { background: var(--color-navy); color: var(--text-primary); border-color: rgba(255, 255, 255, 0.18); }
+.scoreboard-view .score-summary { background: var(--sb-card-deep); }
+
+/* ---- Admin: tab row ------------------------------------------------------ */
+.admin-tabs { display: flex; gap: 1.5rem; padding: 16px 20px 0; flex-wrap: wrap; }
+.admin-tab {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sb-muted);
+  text-decoration: none;
+  padding-bottom: 8px;
+  border-bottom: 2px solid transparent;
+}
+.admin-tab:hover { color: var(--text-primary); }
+.admin-tab.active { color: var(--text-primary); border-bottom-color: var(--color-gold); }
+.admin-header-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin: 0.75rem 20px 0; }
+
 .sb-empty {
   font-family: var(--font-display);
   font-size: 1.4rem;

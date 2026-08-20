@@ -1,19 +1,19 @@
-<%- include('../partials/header', { title: 'Admin · Data' }) %>
+<%- include('../partials/header', { title: 'Admin · Data', mainClass: 'scoreboard-view' }) %>
 
-<div style="display:flex;gap:1rem;margin-bottom:0.75rem;font-size:0.9rem;">
-  <a href="/admin/players" class="muted">Players</a>
-  <a href="/admin/courses" class="muted">Courses</a>
-  <a href="/admin/competitions" class="muted">Competitions</a>
-  <a href="/admin/data">Data</a>
-</div>
+<nav class="admin-tabs">
+  <a class="admin-tab" href="/admin/players">Players</a>
+  <a class="admin-tab" href="/admin/courses">Courses</a>
+  <a class="admin-tab" href="/admin/competitions">Competitions</a>
+  <a class="admin-tab active" href="/admin/data">Data</a>
+</nav>
 
-<h1 class="mt-0">Data</h1>
-<p class="muted" style="margin-top:-0.5rem;">
+<h1 style="margin:0.75rem 20px 0;">Data</h1>
+<p class="muted" style="margin:0 20px;">
   <%= counts.competitions %> competitions · <%= counts.rounds %> rounds submitted · <%= counts.entries %> entries · <%= counts.players %> players
 </p>
 
-<% if (error) { %><div class="error-box"><%= error %></div><% } %>
-<% if (message) { %><div class="success-box"><%= message %></div><% } %>
+<% if (error) { %><div class="error-box" style="margin:0.75rem 20px;"><%= error %></div><% } %>
+<% if (message) { %><div class="success-box" style="margin:0.75rem 20px;"><%= message %></div><% } %>
 
 <div class="card" style="max-width:560px;">
   <h2 class="mt-0">Reset handicaps</h2>
@@ -29,7 +29,7 @@
     <label style="font-size:0.9rem;">
       <span style="display:block;margin-bottom:0.3rem;">Starting Handicap Index</span>
       <input type="number" step="0.1" name="defaultHandicap" value="28.0" required
-        style="width:100px;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
+        style="width:100px;padding:0.55rem 0.7rem;border:1px solid var(--sb-border);border-radius:8px;font-size:1rem;">
     </label>
     <button type="submit" class="btn-secondary">Reset all handicaps</button>
   </form>
@@ -51,7 +51,7 @@
       </div>
       <button type="button" class="btn-danger" id="clearAllScoresBtn">Clear all scores</button>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:0.75rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;border-top:1px solid var(--sb-border);padding-top:0.75rem;">
       <div>
         <strong style="font-size:0.92rem;">Delete all competitions</strong>
         <p class="muted" style="font-size:0.82rem;margin:0.15rem 0 0;">Deletes every competition and everything under it (scores, entries, pairing sheets). Players and courses stay, handicaps recalculate the same way as Clear all scores.</p>
@@ -91,4 +91,4 @@
   });
 </script>
 
-<%- include('../partials/footer') %>
+<%- include('../partials/footer', { hideTagline: true }) %>

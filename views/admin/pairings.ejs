@@ -1,13 +1,13 @@
-<%- include('../partials/header', { title: 'Pairing sheet · ' + comp.name }) %>
+<%- include('../partials/header', { title: 'Pairing sheet · ' + comp.name, mainClass: 'scoreboard-view' }) %>
 
-<div style="display:flex;gap:1rem;margin-bottom:0.75rem;font-size:0.9rem;" class="no-print">
-  <a href="/admin/players" class="muted">Players</a>
-  <a href="/admin/courses" class="muted">Courses</a>
-  <a href="/admin/competitions" class="muted">Competitions</a>
-  <a href="/admin/data" class="muted">Data</a>
-</div>
+<nav class="admin-tabs no-print">
+  <a class="admin-tab" href="/admin/players">Players</a>
+  <a class="admin-tab" href="/admin/courses">Courses</a>
+  <a class="admin-tab" href="/admin/competitions">Competitions</a>
+  <a class="admin-tab" href="/admin/data">Data</a>
+</nav>
 
-<div class="sheet-head" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;">
+<div class="sheet-head" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;margin:0.75rem 20px 0;">
   <div>
     <span class="badge">Admin &middot; Pairing sheet</span>
     <h1 class="mt-0"><%= comp.name %></h1>
@@ -22,7 +22,7 @@
   </div>
 </div>
 
-<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+<% if (error) { %><div class="error-box" style="margin:0.75rem 20px;"><%= error %></div><% } %>
 
 <% if (entrants.length === 0) { %>
   <div class="card"><p class="muted" style="margin:0;">Nobody has entered this competition yet — the pairing sheet needs at least one entrant to build groups from.</p></div>
@@ -31,20 +31,20 @@
 <div class="card no-print" id="controlsCard">
   <div class="controls-row" style="display:flex;flex-wrap:wrap;gap:1.25rem 1.75rem;align-items:end;">
     <div class="field" style="display:flex;flex-direction:column;gap:0.35rem;">
-      <label for="groupSize" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">Group size</label>
-      <select id="groupSize" style="padding:0.5rem 0.65rem;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;">
+      <label for="groupSize" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--sb-muted);">Group size</label>
+      <select id="groupSize" style="padding:0.5rem 0.65rem;border:1px solid var(--sb-border);border-radius:8px;font-size:0.95rem;">
         <option value="2">2 players</option>
         <option value="3">3 players</option>
         <option value="4" selected>4 players</option>
       </select>
     </div>
     <div class="field" style="display:flex;flex-direction:column;gap:0.35rem;">
-      <label for="teeStart" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">First tee time</label>
-      <input type="time" id="teeStart" value="08:00" style="padding:0.5rem 0.65rem;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;">
+      <label for="teeStart" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--sb-muted);">First tee time</label>
+      <input type="time" id="teeStart" value="08:00" style="padding:0.5rem 0.65rem;border:1px solid var(--sb-border);border-radius:8px;font-size:0.95rem;">
     </div>
     <div class="field" style="display:flex;flex-direction:column;gap:0.35rem;">
-      <label for="teeGap" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">Minutes between groups</label>
-      <input type="number" id="teeGap" min="6" max="20" value="10" style="width:5rem;padding:0.5rem 0.65rem;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;">
+      <label for="teeGap" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--sb-muted);">Minutes between groups</label>
+      <input type="number" id="teeGap" min="6" max="20" value="10" style="width:5rem;padding:0.5rem 0.65rem;border:1px solid var(--sb-border);border-radius:8px;font-size:0.95rem;">
     </div>
     <div style="display:flex;align-items:center;gap:0.5rem;padding-bottom:0.5rem;">
       <input type="checkbox" id="balanceHcp" checked style="width:1.05rem;height:1.05rem;accent-color:var(--color-gold);">
@@ -57,13 +57,13 @@
   </p>
 </div>
 
-<div class="groups-meta no-print" style="display:flex;justify-content:space-between;align-items:baseline;margin:1.5rem 0 0.75rem;">
+<div class="groups-meta no-print" style="display:flex;justify-content:space-between;align-items:baseline;margin:1.5rem 20px 0.75rem;">
   <h2 style="font-size:1.2rem;margin:0;">Tee-off order</h2>
   <span class="muted" id="groupCount" style="font-size:0.85rem;"></span>
 </div>
-<div class="groups-grid" id="groupsGrid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:1rem;"></div>
+<div class="groups-grid" id="groupsGrid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:1rem;margin:0 20px;"></div>
 
-<div class="no-print" style="margin-top:1.25rem;display:flex;align-items:center;gap:0.75rem;">
+<div class="no-print" style="margin:1.25rem 20px 0;display:flex;align-items:center;gap:0.75rem;">
   <button type="button" id="saveBtn">Save pairing sheet</button>
   <span id="saveStatus" class="muted" style="font-size:0.85rem;"></span>
 </div>
@@ -71,9 +71,9 @@
 <% } %>
 
 <style>
-  .group-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .group-card { background: var(--sb-card); border: 1px solid var(--sb-border); border-radius: var(--radius); overflow: hidden; }
   .group-card-head {
-    background: var(--color-navy); color: var(--text-primary); padding: 0.7rem 0.95rem;
+    background: var(--sb-card-deep); color: var(--text-primary); padding: 0.7rem 0.95rem;
     display: flex; justify-content: space-between; align-items: baseline;
   }
   .group-card-head .group-num { font-weight: 800; font-size: 0.95rem; }
@@ -84,25 +84,31 @@
     display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.5rem; border-radius: 6px;
     font-size: 0.92rem; cursor: grab; user-select: none; transition: background 120ms ease, opacity 120ms ease;
   }
-  .roster li:hover { background: #faf5e8; }
+  .roster li:hover { background: rgba(255, 255, 255, 0.06); }
   .roster li.dragging { opacity: 0.35; }
-  .roster li .handle { color: var(--border); font-size: 0.85rem; letter-spacing: -1px; flex-shrink: 0; }
-  .roster li .p-name { flex: 1; font-weight: 600; color: var(--text); }
+  .roster li .handle { color: var(--sb-muted-2); font-size: 0.85rem; letter-spacing: -1px; flex-shrink: 0; }
+  .roster li .p-name { flex: 1; font-weight: 600; color: var(--text-primary); }
   .roster li .p-hcp {
-    font-size: 0.78rem; font-weight: 700; color: var(--color-navy); background: var(--bg);
+    font-size: 0.78rem; font-weight: 700; color: var(--color-gold-light); background: rgba(201, 162, 74, 0.14);
     border-radius: 999px; padding: 0.1rem 0.5rem; font-variant-numeric: tabular-nums; flex-shrink: 0;
   }
-  .roster.drag-over { background: #faf5e8; outline: 2px dashed var(--color-gold); outline-offset: -2px; border-radius: 8px; }
-  .group-avg { padding: 0.5rem 0.95rem 0.7rem; font-size: 0.76rem; color: var(--muted); border-top: 1px dashed var(--border); }
-  .group-avg strong { color: var(--color-navy); font-variant-numeric: tabular-nums; }
+  .roster.drag-over { background: var(--sb-fill-gold-soft); outline: 2px dashed var(--color-gold); outline-offset: -2px; border-radius: 8px; }
+  .group-avg { padding: 0.5rem 0.95rem 0.7rem; font-size: 0.76rem; color: var(--sb-muted); border-top: 1px dashed var(--sb-border); }
+  .group-avg strong { color: var(--color-gold-light); font-variant-numeric: tabular-nums; }
 
   @media print {
     .no-print { display: none !important; }
-    body { background: #fff; }
+    /* !important needed here: body.scoreboard-page's navy background (in
+       the main stylesheet, no media guard) otherwise outranks this on
+       specificity alone regardless of source order or the print context. */
+    body { background: #fff !important; }
+    .scoreboard-view, .card, .group-card { background: #fff !important; color: #12202f !important; }
     .container { padding: 0; max-width: 100%; }
     .groups-grid { grid-template-columns: repeat(2, 1fr) !important; }
     .roster li { cursor: default; }
     .roster li .handle { display: none; }
+    .roster li .p-name { color: #12202f !important; }
+    .group-card-head { background: #071a2b !important; color: #fff !important; }
   }
 </style>
 
@@ -310,4 +316,4 @@
 })();
 </script>
 
-<%- include('../partials/footer') %>
+<%- include('../partials/footer', { hideTagline: true }) %>

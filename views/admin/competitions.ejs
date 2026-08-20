@@ -1,13 +1,13 @@
-<%- include('../partials/header', { title: 'Admin · Competitions' }) %>
+<%- include('../partials/header', { title: 'Admin · Competitions', mainClass: 'scoreboard-view' }) %>
 
-<div style="display:flex;gap:1rem;margin-bottom:0.75rem;font-size:0.9rem;">
-  <a href="/admin/players" class="muted">Players</a>
-  <a href="/admin/courses" class="muted">Courses</a>
-  <a href="/admin/competitions">Competitions</a>
-  <a href="/admin/data" class="muted">Data</a>
-</div>
+<nav class="admin-tabs">
+  <a class="admin-tab" href="/admin/players">Players</a>
+  <a class="admin-tab" href="/admin/courses">Courses</a>
+  <a class="admin-tab active" href="/admin/competitions">Competitions</a>
+  <a class="admin-tab" href="/admin/data">Data</a>
+</nav>
 
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+<div class="admin-header-row">
   <h1 class="mt-0">Competitions</h1>
   <a class="btn" href="/admin/competitions/new">+ New competition</a>
 </div>
@@ -58,7 +58,7 @@
       <% }) %>
     </ul>
 
-    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);">
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--sb-border);">
       <span class="muted" style="font-size:0.85rem;align-self:center;">With selected:</span>
       <button type="button" class="btn-secondary" id="clearSelectedBtn">Clear scores</button>
       <button type="button" class="btn-danger" id="deleteSelectedBtn">Delete</button>
@@ -102,4 +102,4 @@
   }
 </script>
 
-<%- include('../partials/footer') %>
+<%- include('../partials/footer', { hideTagline: true }) %>

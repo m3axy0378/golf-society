@@ -1,12 +1,12 @@
-<%- include('../partials/header', { title: 'Edit round' }) %>
+<%- include('../partials/header', { title: 'Edit round', mainClass: 'scoreboard-view' }) %>
 
-<h1 class="mt-0">Edit <%= round.player_name %>'s round</h1>
-<p class="muted" style="margin-top:-0.75rem;">
+<h1 style="margin:0.75rem 20px 0;">Edit <%= round.player_name %>'s round</h1>
+<p class="muted" style="margin:0 20px;">
   <%= round.comp_name %> · <%= round.course_name %> (<%= round.tee_name %> tees, par <%= round.course_par %>,
   CR <%= round.course_rating.toFixed(1) %> / SR <%= round.slope_rating %>)
 </p>
 
-<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+<% if (error) { %><div class="error-box" style="margin:0.75rem 20px;"><%= error %></div><% } %>
 
 <div class="card" style="max-width:640px;">
   <form method="POST" action="/admin/rounds/<%= round.id %>/edit"
@@ -32,7 +32,7 @@
   </form>
 </div>
 
-<a class="muted" href="/competitions/<%= round.competition_id %>">&larr; Back to competition</a>
+<a class="sb-link" style="margin:0 20px;display:inline-block;" href="/competitions/<%= round.competition_id %>">&larr; Back to competition</a>
 
 <script>
   document.querySelectorAll('.stepper').forEach((stepper) => {
@@ -49,4 +49,4 @@
   });
 </script>
 
-<%- include('../partials/footer') %>
+<%- include('../partials/footer', { hideTagline: true }) %>

@@ -1,7 +1,7 @@
-<%- include('../partials/header', { title: 'Edit course' }) %>
+<%- include('../partials/header', { title: 'Edit course', mainClass: 'scoreboard-view' }) %>
 
-<h1 class="mt-0">Edit course</h1>
-<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+<h1 style="margin:0.75rem 20px 0;">Edit course</h1>
+<% if (error) { %><div class="error-box" style="margin:0.75rem 20px;"><%= error %></div><% } %>
 
 <div class="card" style="max-width:640px;">
   <form class="stacked" method="POST" action="/admin/courses/<%= course.id %>/edit">
@@ -44,6 +44,6 @@
   </p>
 </div>
 
-<a class="muted" href="/admin/courses">&larr; Back to courses</a>
+<a class="sb-link" style="margin:0 20px;display:inline-block;" href="/admin/courses">&larr; Back to courses</a>
 
-<%- include('../partials/footer') %>
+<%- include('../partials/footer', { hideTagline: true }) %>
