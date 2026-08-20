@@ -19,7 +19,9 @@
   <h2 class="mt-0">Reset handicaps</h2>
   <p class="muted" style="font-size:0.88rem;">
     Sets every player's Handicap Index back to a starting value. Doesn't touch competitions or scores — a player's
-    handicap will start moving again the next time they submit a round.
+    handicap will start moving again the next time they submit a round. Clearing/deleting competitions below already
+    recalculates handicaps from whatever rounds are left, but once <em>every</em> round is gone there's nothing left
+    to calculate from — use this to give everyone a fresh starting point.
   </p>
   <form method="POST" action="/admin/settings/reset-handicaps"
     onsubmit="return confirm('Reset the Handicap Index for all ' + <%= counts.players %> + ' players to ' + this.defaultHandicap.value + '? This can\'t be undone.');"
@@ -45,14 +47,14 @@
     <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;">
       <div>
         <strong style="font-size:0.92rem;">Clear all scores &amp; entries</strong>
-        <p class="muted" style="font-size:0.82rem;margin:0.15rem 0 0;">Wipes every round and entry. Competitions and courses stay.</p>
+        <p class="muted" style="font-size:0.82rem;margin:0.15rem 0 0;">Wipes every round and entry. Competitions and courses stay. Handicaps are recalculated from whatever's left (nothing, after this) — pair with Reset handicaps above for a clean slate.</p>
       </div>
       <button type="button" class="btn-danger" id="clearAllScoresBtn">Clear all scores</button>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:0.75rem;">
       <div>
         <strong style="font-size:0.92rem;">Delete all competitions</strong>
-        <p class="muted" style="font-size:0.82rem;margin:0.15rem 0 0;">Deletes every competition and everything under it (scores, entries, pairing sheets). Players and courses stay.</p>
+        <p class="muted" style="font-size:0.82rem;margin:0.15rem 0 0;">Deletes every competition and everything under it (scores, entries, pairing sheets). Players and courses stay, handicaps recalculate the same way as Clear all scores.</p>
       </div>
       <button type="button" class="btn-danger" id="deleteAllCompsBtn">Delete all competitions</button>
     </div>

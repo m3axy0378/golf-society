@@ -415,7 +415,15 @@ router.post(
 router.post(
   '/competitions/:id/delete',
   asyncHandler(async (req, res) => {
-    await db.query('DELETE FROM competitions WHERE id = $1', [req.params.id]);
+    await db.withTransaction(async (client) => {
+      const { rows: affected } = await client.query('SELECT DISTINCT player_id FROM rounds WHERE competition_id = $1', [req.params.id]);
+
+      await client.query('DELETE FROM competitions WHERE id = $1', [req.params.id]);
+
+      for (const { player_id } of affected) {
+        await updatePlayerHandicap(client.query.bind(client), player_id);
+      }
+    });
     res.redirect('/admin/competitions');
   })
 );
@@ -439,8 +447,17 @@ router.post(
     if (ids.length === 0) return res.status(400).json({ error: 'No competitions selected.' });
 
     await db.withTransaction(async (client) => {
+      // Every player who had a round in one of these competitions needs their
+      // Handicap Index recalculated afterwards — grab them before the delete,
+      // since the rounds that prove it are about to disappear.
+      const { rows: affected } = await client.query('SELECT DISTINCT player_id FROM rounds WHERE competition_id = ANY($1)', [ids]);
+
       await client.query('DELETE FROM rounds WHERE competition_id = ANY($1)', [ids]);
       await client.query('DELETE FROM entries WHERE competition_id = ANY($1)', [ids]);
+
+      for (const { player_id } of affected) {
+        await updatePlayerHandicap(client.query.bind(client), player_id);
+      }
     });
 
     res.json({ ok: true, count: ids.length });
@@ -453,7 +470,15 @@ router.post(
     const ids = await resolveCompetitionIds(req.body);
     if (ids.length === 0) return res.status(400).json({ error: 'No competitions selected.' });
 
-    await db.query('DELETE FROM competitions WHERE id = ANY($1)', [ids]);
+    await db.withTransaction(async (client) => {
+      const { rows: affected } = await client.query('SELECT DISTINCT player_id FROM rounds WHERE competition_id = ANY($1)', [ids]);
+
+      await client.query('DELETE FROM competitions WHERE id = ANY($1)', [ids]);
+
+      for (const { player_id } of affected) {
+        await updatePlayerHandicap(client.query.bind(client), player_id);
+      }
+    });
 
     res.json({ ok: true, count: ids.length });
   })
