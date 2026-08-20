@@ -30,23 +30,39 @@ app.locals.vapidPublicKey = null;
 app.locals.baseUrl = '';
 app.locals.pairingSheetEnabled = true;
 
+// Appended to /style.css's URL so every deploy gets a distinct URL instead
+// of reusing "/style.css" forever — lets the browser cache it aggressively
+// (see vercel.json) while guaranteeing a CSS change is never masked by an
+// old cached copy, which is what long max-age on a fixed URL would do.
+// Vercel sets this automatically for Git-connected deployments; falls back
+// to boot time so local/non-Vercel runs still get a fresh value per restart.
+app.locals.buildVersion = process.env.VERCEL_GIT_COMMIT_SHA || String(Date.now());
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Static files aren't fingerprinted (style.css etc. keep the same URL across
+// Most static files aren't fingerprinted (they keep the same URL across
 // deploys), so caching can't be "forever, immutable" — but the default was
 // max-age=0, forcing a revalidation round trip for every asset on every page
 // load. Icons/manifest change essentially never, so they get a long cache.
 // sw.js is excluded entirely: browsers already special-case service worker
 // scripts to re-check at most every 24h, and it should never be served stale
-// during a deploy. Everything else (style.css, the small JS helpers) gets a
-// short cache — long enough to skip repeat requests within a browsing
-// session, short enough that a fix ships to everyone within the hour.
+// during a deploy. style.css IS fingerprinted (linked as /style.css?v=<build
+// version>, see app.locals.buildVersion above), so it's safe to cache for a
+// full year — a CSS change ships instantly via a new URL rather than by
+// waiting for an old cached copy to expire, which is what bit us in
+// production: a change would look "live" on deploy but stay invisible to
+// anyone with a still-warm cache from before it, for up to the old max-age.
+// Everything else (the small JS helpers) gets a short, unversioned cache —
+// long enough to skip repeat requests within a browsing session, short
+// enough that a fix still ships to everyone within the hour.
 app.use(
   express.static(path.join(__dirname, 'public'), {
     setHeaders: (res, filePath) => {
       if (path.basename(filePath) === 'sw.js') {
         res.setHeader('Cache-Control', 'no-cache');
+      } else if (path.basename(filePath) === 'style.css') {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); // 1 year
       } else if (filePath.includes(`${path.sep}img${path.sep}`)) {
         res.setHeader('Cache-Control', 'public, max-age=604800'); // 7 days
       } else {
