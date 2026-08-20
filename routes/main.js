@@ -640,13 +640,91 @@ router.get(
   })
 );
 
-async function getRoundsPlayed(playerId) {
-  const { rows } = await db.query(
-    `SELECT COUNT(*) FROM rounds r JOIN competitions c ON c.id = r.competition_id
-     WHERE r.player_id = $1 AND c.type != 'sprint'`,
+// Everything the old standalone /stats page showed — now folded into
+// /profile ("Me") instead of living on its own tab. roundsPlayed comes out
+// of the same rankedRounds filter that already excludes sprints, so this
+// replaces what used to be a separate getRoundsPlayed() query too.
+async function getStatsData(playerId, currentHandicapIndex) {
+  const { rows: myRounds } = await db.query(
+    `SELECT r.*, c.name AS comp_name, c.type AS comp_type, c.format AS comp_format, c.comp_date,
+            co.name AS course_name
+     FROM rounds r
+     JOIN competitions c ON c.id = r.competition_id
+     JOIN courses co ON co.id = r.course_id
+     WHERE r.player_id = $1
+     ORDER BY c.comp_date DESC, r.submitted_at DESC`,
     [playerId]
   );
-  return parseInt(rows[0].count, 10);
+
+  // Chronological (oldest first) for the trend line, using every round —
+  // it's just a record of what the player's handicap actually was at the
+  // time, regardless of competition type. handicap_index_used is always the
+  // handicap going INTO that round, so on its own the series stops one step
+  // short of reality — it never shows what the most recent round actually
+  // did to their handicap. Appending the player's current (post-recalc)
+  // handicap_index as a final "now" point closes that gap, and is also
+  // what turns a single-round player's trend from 1 point (too few to draw
+  // a line) into a real 2-point before/after picture.
+  const handicapTrend = [...myRounds].reverse().map((r) => ({ date: r.comp_date, handicapIndex: r.handicap_index_used }));
+  handicapTrend.push({ date: new Date(), handicapIndex: currentHandicapIndex });
+
+  // Sprint rounds are only 9 holes, so mixing them into "best/worst" or an
+  // average against full 18-hole rounds would be comparing apples to oranges.
+  const rankedRounds = myRounds.filter((r) => r.comp_type !== 'sprint');
+  let bestRound = null;
+  let worstRound = null;
+  for (const r of rankedRounds) {
+    if (!bestRound || r.stableford_points > bestRound.stableford_points) bestRound = r;
+    if (!worstRound || r.stableford_points < worstRound.stableford_points) worstRound = r;
+  }
+  const avgPoints = rankedRounds.length
+    ? rankedRounds.reduce((sum, r) => sum + r.stableford_points, 0) / rankedRounds.length
+    : null;
+
+  // Head-to-head: every competition both this player and another player
+  // both submitted a score for, decided the same way the leaderboard itself
+  // decides a winner (the format-appropriate metric).
+  const { rows: sharedRounds } = await db.query(
+    `SELECT r.competition_id, r.player_id, r.gross_total, r.net_total, r.stableford_points,
+            c.format AS comp_format, p.name AS player_name
+     FROM rounds r
+     JOIN competitions c ON c.id = r.competition_id
+     JOIN players p ON p.id = r.player_id
+     WHERE r.competition_id IN (SELECT competition_id FROM rounds WHERE player_id = $1) AND r.player_id != $1`,
+    [playerId]
+  );
+  const myRoundsByComp = new Map(myRounds.map((r) => [r.competition_id, r]));
+  const h2hByOpponent = new Map();
+  for (const other of sharedRounds) {
+    const mine = myRoundsByComp.get(other.competition_id);
+    if (!mine) continue;
+    const entry = h2hByOpponent.get(other.player_id) || {
+      playerId: other.player_id,
+      playerName: other.player_name,
+      wins: 0,
+      losses: 0,
+      ties: 0,
+    };
+    const myMetric = metricForFormat(other.comp_format, mine);
+    const theirMetric = metricForFormat(other.comp_format, other);
+    if (myMetric < theirMetric) entry.wins += 1;
+    else if (myMetric > theirMetric) entry.losses += 1;
+    else entry.ties += 1;
+    h2hByOpponent.set(other.player_id, entry);
+  }
+  const headToHead = Array.from(h2hByOpponent.values())
+    .map((h) => ({ ...h, played: h.wins + h.losses + h.ties }))
+    .sort((a, b) => b.played - a.played || b.wins - a.wins || a.playerName.localeCompare(b.playerName));
+
+  return {
+    myRounds,
+    roundsPlayed: rankedRounds.length,
+    handicapTrend,
+    bestRound,
+    worstRound,
+    avgPoints,
+    headToHead,
+  };
 }
 
 router.get(
@@ -654,8 +732,9 @@ router.get(
   requireLogin,
   asyncHandler(async (req, res) => {
     const { rows } = await db.query('SELECT * FROM players WHERE id = $1', [req.session.playerId]);
-    const roundsPlayed = await getRoundsPlayed(req.session.playerId);
-    res.render('profile', { player: rows[0], roundsPlayed, message: null });
+    const player = rows[0];
+    const stats = await getStatsData(req.session.playerId, player.handicap_index);
+    res.render('profile', { player, message: null, ...stats, TYPE_LABELS, FORMAT_LABELS });
   })
 );
 
@@ -663,23 +742,32 @@ router.post(
   '/profile',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const roundsPlayed = await getRoundsPlayed(req.session.playerId);
-    if (roundsPlayed > 0) {
-      const { rows } = await db.query('SELECT * FROM players WHERE id = $1', [req.session.playerId]);
+    const { rows: beforeRows } = await db.query('SELECT * FROM players WHERE id = $1', [req.session.playerId]);
+    const statsForMessage = await getStatsData(req.session.playerId, beforeRows[0].handicap_index);
+
+    if (statsForMessage.roundsPlayed > 0) {
       return res.render('profile', {
-        player: rows[0],
-        roundsPlayed,
+        player: beforeRows[0],
         message: 'Your Handicap Index is calculated automatically now and can\'t be edited by hand.',
+        ...statsForMessage,
+        TYPE_LABELS,
+        FORMAT_LABELS,
       });
     }
     const handicapIndex = parseFloat(req.body.handicapIndex);
     if (!Number.isFinite(handicapIndex)) {
-      const { rows } = await db.query('SELECT * FROM players WHERE id = $1', [req.session.playerId]);
-      return res.render('profile', { player: rows[0], roundsPlayed, message: 'Please enter a valid handicap index.' });
+      return res.render('profile', {
+        player: beforeRows[0],
+        message: 'Please enter a valid handicap index.',
+        ...statsForMessage,
+        TYPE_LABELS,
+        FORMAT_LABELS,
+      });
     }
     await db.query('UPDATE players SET handicap_index = $1 WHERE id = $2', [handicapIndex, req.session.playerId]);
     const { rows } = await db.query('SELECT * FROM players WHERE id = $1', [req.session.playerId]);
-    res.render('profile', { player: rows[0], roundsPlayed, message: 'Starting handicap index updated.' });
+    const stats = await getStatsData(req.session.playerId, handicapIndex);
+    res.render('profile', { player: rows[0], message: 'Starting handicap index updated.', ...stats, TYPE_LABELS, FORMAT_LABELS });
   })
 );
 
@@ -731,97 +819,9 @@ router.get(
   })
 );
 
-router.get(
-  '/stats',
-  requireLogin,
-  asyncHandler(async (req, res) => {
-    const playerId = req.session.playerId;
-
-    const { rows: myRounds } = await db.query(
-      `SELECT r.*, c.name AS comp_name, c.type AS comp_type, c.format AS comp_format, c.comp_date,
-              co.name AS course_name
-       FROM rounds r
-       JOIN competitions c ON c.id = r.competition_id
-       JOIN courses co ON co.id = r.course_id
-       WHERE r.player_id = $1
-       ORDER BY c.comp_date DESC, r.submitted_at DESC`,
-      [playerId]
-    );
-
-    // Chronological (oldest first) for the trend line, using every round —
-    // it's just a record of what the player's handicap actually was at the
-    // time, regardless of competition type. handicap_index_used is always the
-    // handicap going INTO that round, so on its own the series stops one step
-    // short of reality — it never shows what the most recent round actually
-    // did to their handicap. Appending the player's current (post-recalc)
-    // handicap_index as a final "now" point closes that gap, and is also
-    // what turns a single-round player's trend from 1 point (too few to
-    // draw a line) into a real 2-point before/after picture.
-    const handicapTrend = [...myRounds]
-      .reverse()
-      .map((r) => ({ date: r.comp_date, handicapIndex: r.handicap_index_used }));
-    handicapTrend.push({ date: new Date(), handicapIndex: res.locals.currentPlayer.handicap_index });
-
-    // Sprint rounds are only 9 holes, so mixing them into "best/worst" or an
-    // average against full 18-hole rounds would be comparing apples to oranges.
-    const rankedRounds = myRounds.filter((r) => r.comp_type !== 'sprint');
-    let bestRound = null;
-    let worstRound = null;
-    for (const r of rankedRounds) {
-      if (!bestRound || r.stableford_points > bestRound.stableford_points) bestRound = r;
-      if (!worstRound || r.stableford_points < worstRound.stableford_points) worstRound = r;
-    }
-    const avgPoints = rankedRounds.length
-      ? rankedRounds.reduce((sum, r) => sum + r.stableford_points, 0) / rankedRounds.length
-      : null;
-
-    // Head-to-head: every competition both this player and another player
-    // both submitted a score for, decided the same way the leaderboard
-    // itself decides a winner (the format-appropriate metric).
-    const { rows: sharedRounds } = await db.query(
-      `SELECT r.competition_id, r.player_id, r.gross_total, r.net_total, r.stableford_points,
-              c.format AS comp_format, p.name AS player_name
-       FROM rounds r
-       JOIN competitions c ON c.id = r.competition_id
-       JOIN players p ON p.id = r.player_id
-       WHERE r.competition_id IN (SELECT competition_id FROM rounds WHERE player_id = $1) AND r.player_id != $1`,
-      [playerId]
-    );
-    const myRoundsByComp = new Map(myRounds.map((r) => [r.competition_id, r]));
-    const h2hByOpponent = new Map();
-    for (const other of sharedRounds) {
-      const mine = myRoundsByComp.get(other.competition_id);
-      if (!mine) continue;
-      const entry = h2hByOpponent.get(other.player_id) || {
-        playerId: other.player_id,
-        playerName: other.player_name,
-        wins: 0,
-        losses: 0,
-        ties: 0,
-      };
-      const myMetric = metricForFormat(other.comp_format, mine);
-      const theirMetric = metricForFormat(other.comp_format, other);
-      if (myMetric < theirMetric) entry.wins += 1;
-      else if (myMetric > theirMetric) entry.losses += 1;
-      else entry.ties += 1;
-      h2hByOpponent.set(other.player_id, entry);
-    }
-    const headToHead = Array.from(h2hByOpponent.values())
-      .map((h) => ({ ...h, played: h.wins + h.losses + h.ties }))
-      .sort((a, b) => b.played - a.played || b.wins - a.wins || a.playerName.localeCompare(b.playerName));
-
-    res.render('stats', {
-      myRounds,
-      handicapTrend,
-      bestRound,
-      worstRound,
-      avgPoints,
-      headToHead,
-      TYPE_LABELS,
-      FORMAT_LABELS,
-    });
-  })
-);
+// My Stats used to be its own page — folded into /profile ("Me") now, so
+// any bookmarked or shared /stats link still lands somewhere real.
+router.get('/stats', requireLogin, (req, res) => res.redirect('/profile'));
 
 router.get(
   '/rounds/:id/scorecard',

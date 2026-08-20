@@ -24,7 +24,7 @@
     icon: '<path d="M8 21h8M12 17v4M6 4h12v4a6 6 0 0 1-12 0z"/>' },
   { key: 'hcp', href: '/handicaps', label: 'Hcp', match: (p) => p === '/handicaps',
     icon: '<path d="M4 19V9M10 19V5M16 19v-7M22 19h-20"/>' },
-  { key: 'me', href: '/profile', label: 'Me', match: (p) => p === '/profile' || p === '/stats',
+  { key: 'me', href: '/profile', label: 'Me', match: (p) => p === '/profile',
     icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>' },
 ]; %>
 <body class="<%= [currentPlayer ? 'has-app-nav' : '', typeof mainClass !== 'undefined' && mainClass === 'scoreboard-view' ? 'scoreboard-page' : ''].filter(Boolean).join(' ') %>">
