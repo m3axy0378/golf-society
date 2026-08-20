@@ -241,6 +241,13 @@ ALTER TABLE players ADD COLUMN IF NOT EXISTS dashboard_intro_seen BOOLEAN NOT NU
 -- test data never pollutes what real players see. Only ever set from the
 -- admin Players page.
 ALTER TABLE players ADD COLUMN IF NOT EXISTS is_test_user BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Self-service password reset. Only the SHA-256 hash of the reset token is
+-- stored (never the raw token, which only ever exists in the emailed link),
+-- and expires_at gives it a 1-hour window rather than leaving a valid link
+-- live forever. Both are cleared once the password is actually reset.
+ALTER TABLE players ADD COLUMN IF NOT EXISTS password_reset_token_hash TEXT;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMPTZ;
 `;
 
 let readyPromise = null;
