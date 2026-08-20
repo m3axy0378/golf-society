@@ -69,4 +69,20 @@
   </form>
 </div>
 
+<div class="card" style="max-width:480px;">
+  <h2 class="mt-0">Features</h2>
+  <form method="POST" action="/admin/settings/pairing-sheet">
+    <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.85rem;">
+      <input type="checkbox" name="enabled" style="width:auto;margin:0;" <%= pairingSheetEnabled ? 'checked' : '' %>>
+      Pairing sheets
+    </label>
+    <button type="submit" class="btn-secondary">Save</button>
+  </form>
+  <p class="muted" style="font-size:0.85rem;margin-bottom:0;">
+    Turns the tee-off pairing sheet builder on or off across the whole app. Switching it off hides "Pairing sheet"
+    links and any saved tee-off order from competition pages — it doesn't delete anything already saved, so
+    switching it back on brings existing sheets right back.
+  </p>
+</div>
+
 <%- include('../partials/footer') %>

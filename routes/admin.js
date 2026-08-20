@@ -428,6 +428,14 @@ router.post(
   })
 );
 
+router.post(
+  '/settings/pairing-sheet',
+  asyncHandler(async (req, res) => {
+    await db.setSetting('pairing_sheet_enabled', req.body.enabled === 'on' ? 'true' : 'false');
+    res.redirect('/admin/players');
+  })
+);
+
 // ---- Rounds ----
 // Players can't edit their own round once it's saved — this is the escape
 // hatch for a genuine mistake (mis-tapped a score, wrong hole, etc).
@@ -539,6 +547,9 @@ router.post(
 router.get(
   '/competitions/:id/pairings',
   asyncHandler(async (req, res) => {
+    if (!res.locals.pairingSheetEnabled) {
+      return res.status(404).render('error', { message: 'Pairing sheets are turned off — an admin can turn them back on under Players.' });
+    }
     const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
     const comp = compRows[0];
     if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
@@ -562,6 +573,8 @@ router.get(
 router.post(
   '/competitions/:id/pairings',
   asyncHandler(async (req, res) => {
+    if (!res.locals.pairingSheetEnabled) return res.status(404).json({ error: 'Pairing sheets are turned off.' });
+
     const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
     const comp = compRows[0];
     if (!comp) return res.status(404).json({ error: 'Competition not found.' });

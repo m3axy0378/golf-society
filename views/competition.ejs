@@ -18,7 +18,7 @@
   <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;">
     <span class="badge <%= comp.status === 'closed' ? 'closed' : '' %>"><%= comp.status === 'open' ? 'Open for entry' : 'Closed' %></span>
     <% if (currentPlayer.is_admin) { %>
-      <a class="btn btn-secondary" href="/admin/competitions/<%= comp.id %>/pairings">Pairing sheet</a>
+      <% if (pairingSheetEnabled) { %><a class="btn btn-secondary" href="/admin/competitions/<%= comp.id %>/pairings">Pairing sheet</a><% } %>
       <form method="POST" action="/admin/competitions/<%= comp.id %>/notify" class="inline-form"
         onsubmit="return confirm('Send a push notification about &quot;<%= comp.name %>&quot; to every player who has notifications enabled?');">
         <button type="submit" class="btn-secondary">Notify players</button>
@@ -55,7 +55,7 @@
   </div>
 <% } %>
 
-<% if (pairingGroups.length > 0) { %>
+<% if (pairingSheetEnabled && pairingGroups.length > 0) { %>
   <div class="card">
     <h2 class="mt-0" style="font-size:1.05rem;">Tee-off order</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:0.75rem;margin-top:0.75rem;">
