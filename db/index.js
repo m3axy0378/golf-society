@@ -219,6 +219,15 @@ CREATE TABLE IF NOT EXISTS pairing_groups (
   tee_time TEXT,
   UNIQUE(competition_id, player_id)
 );
+
+-- Postgres only auto-indexes primary keys and UNIQUE constraints — every
+-- other foreign key used in a WHERE/JOIN below was getting a sequential
+-- scan. The composite UNIQUE constraints above already cover lookups by
+-- their leading column (e.g. rounds(competition_id, player_id) covers
+-- "WHERE competition_id = ..."), so only the columns actually queried on
+-- their own need an explicit index here.
+CREATE INDEX IF NOT EXISTS idx_rounds_player_id ON rounds(player_id);
+CREATE INDEX IF NOT EXISTS idx_entries_player_id ON entries(player_id);
 `;
 
 let readyPromise = null;
@@ -238,6 +247,20 @@ function ready() {
 async function getSetting(key, fallback = null) {
   const { rows } = await query('SELECT value FROM settings WHERE key = $1', [key]);
   return rows[0] ? rows[0].value : fallback;
+}
+
+// Batch form of getSetting — one round trip for several keys instead of one
+// per key. Returns a plain { key: value } map, falling back per-key for any
+// row that doesn't exist yet.
+async function getSettings(keysWithFallbacks) {
+  const keys = Object.keys(keysWithFallbacks);
+  const { rows } = await query('SELECT key, value FROM settings WHERE key = ANY($1)', [keys]);
+  const found = new Map(rows.map((r) => [r.key, r.value]));
+  const result = {};
+  for (const key of keys) {
+    result[key] = found.has(key) ? found.get(key) : keysWithFallbacks[key];
+  }
+  return result;
 }
 
 async function setSetting(key, value) {
@@ -263,4 +286,4 @@ async function withTransaction(fn) {
   }
 }
 
-module.exports = { pool, query, ready, getSetting, setSetting, withTransaction };
+module.exports = { pool, query, ready, getSetting, getSettings, setSetting, withTransaction };

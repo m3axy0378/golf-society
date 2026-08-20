@@ -12,6 +12,14 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.set('trust proxy', 1); // needed behind Vercel's proxy for secure cookies
 
+// Express only enables compiled-template caching automatically when it infers
+// a production environment — make it explicit rather than relying on that,
+// so every request after the first reuses the compiled EJS function instead
+// of re-reading and re-compiling the .ejs file from disk.
+if (process.env.NODE_ENV === 'production') {
+  app.set('view cache', true);
+}
+
 // Safe fallbacks so error pages can always render, even if the per-request
 // middleware below never gets a chance to run (e.g. the database is down
 // before res.locals gets set). Express falls back to app.locals when
@@ -24,7 +32,29 @@ app.locals.pairingSheetEnabled = true;
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Static files aren't fingerprinted (style.css etc. keep the same URL across
+// deploys), so caching can't be "forever, immutable" — but the default was
+// max-age=0, forcing a revalidation round trip for every asset on every page
+// load. Icons/manifest change essentially never, so they get a long cache.
+// sw.js is excluded entirely: browsers already special-case service worker
+// scripts to re-check at most every 24h, and it should never be served stale
+// during a deploy. Everything else (style.css, the small JS helpers) gets a
+// short cache — long enough to skip repeat requests within a browsing
+// session, short enough that a fix ships to everyone within the hour.
+app.use(
+  express.static(path.join(__dirname, 'public'), {
+    setHeaders: (res, filePath) => {
+      if (path.basename(filePath) === 'sw.js') {
+        res.setHeader('Cache-Control', 'no-cache');
+      } else if (filePath.includes(`${path.sep}img${path.sep}`)) {
+        res.setHeader('Cache-Control', 'public, max-age=604800'); // 7 days
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
+      }
+    },
+  })
+);
 
 // Sessions are stored client-side in a signed cookie (no server-side session
 // store needed) — this is what makes login work correctly across Vercel's
@@ -52,6 +82,7 @@ app.use(
 app.use(
   asyncHandler(async (req, res, next) => {
     res.locals.currentPlayer = null;
+    const settingsPromise = db.getSettings({ society_name: 'Golf Society', pairing_sheet_enabled: 'true' });
     if (req.session.playerId) {
       const { rows } = await db.query(
         'SELECT id, name, email, handicap_index, is_admin FROM players WHERE id = $1',
@@ -65,21 +96,29 @@ app.use(
       // check against the stale session value.
       req.session.isAdmin = !!(res.locals.currentPlayer && res.locals.currentPlayer.is_admin);
     }
-    res.locals.societyName = await db.getSetting('society_name', 'Golf Society');
+    const settings = await settingsPromise;
+    res.locals.societyName = settings.society_name;
     res.locals.vapidPublicKey = process.env.VAPID_PUBLIC_KEY || null;
     res.locals.baseUrl = `${req.protocol}://${req.get('host')}`;
-    res.locals.pairingSheetEnabled = (await db.getSetting('pairing_sheet_enabled', 'true')) !== 'false';
+    res.locals.pairingSheetEnabled = settings.pairing_sheet_enabled !== 'false';
     next();
   })
 );
 
-// First-run setup gate: if no players exist yet, force the /setup flow
+// First-run setup gate: if no players exist yet, force the /setup flow. Once
+// players exist they never go back to zero (nothing in the app deletes every
+// player), so this only needs to actually hit the database until the first
+// time it observes players present — after that a warm instance can trust
+// its own memory instead of re-querying on every single request forever.
+let playersConfirmedToExist = false;
 app.use(
   asyncHandler(async (req, res, next) => {
+    if (playersConfirmedToExist) return next();
     const { rows } = await db.query('SELECT COUNT(*)::int AS c FROM players');
     if (rows[0].c === 0 && req.path !== '/setup') {
       return res.redirect('/setup');
     }
+    if (rows[0].c > 0) playersConfirmedToExist = true;
     next();
   })
 );
