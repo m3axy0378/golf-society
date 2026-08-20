@@ -1,0 +1,92 @@
+<%- include('../partials/header', { title: 'Admin · Data' }) %>
+
+<div style="display:flex;gap:1rem;margin-bottom:0.75rem;font-size:0.9rem;">
+  <a href="/admin/players" class="muted">Players</a>
+  <a href="/admin/courses" class="muted">Courses</a>
+  <a href="/admin/competitions" class="muted">Competitions</a>
+  <a href="/admin/data">Data</a>
+</div>
+
+<h1 class="mt-0">Data</h1>
+<p class="muted" style="margin-top:-0.5rem;">
+  <%= counts.competitions %> competitions · <%= counts.rounds %> rounds submitted · <%= counts.entries %> entries · <%= counts.players %> players
+</p>
+
+<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+<% if (message) { %><div class="success-box"><%= message %></div><% } %>
+
+<div class="card" style="max-width:560px;">
+  <h2 class="mt-0">Reset handicaps</h2>
+  <p class="muted" style="font-size:0.88rem;">
+    Sets every player's Handicap Index back to a starting value. Doesn't touch competitions or scores — a player's
+    handicap will start moving again the next time they submit a round.
+  </p>
+  <form method="POST" action="/admin/settings/reset-handicaps"
+    onsubmit="return confirm('Reset the Handicap Index for all ' + <%= counts.players %> + ' players to ' + this.defaultHandicap.value + '? This can\'t be undone.');"
+    style="display:flex;align-items:end;gap:0.75rem;flex-wrap:wrap;">
+    <label style="font-size:0.9rem;">
+      <span style="display:block;margin-bottom:0.3rem;">Starting Handicap Index</span>
+      <input type="number" step="0.1" name="defaultHandicap" value="28.0" required
+        style="width:100px;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
+    </label>
+    <button type="submit" class="btn-secondary">Reset all handicaps</button>
+  </form>
+</div>
+
+<div class="card" style="max-width:560px;border-color:rgba(166,58,47,0.35);">
+  <h2 class="mt-0" style="color:var(--color-danger);">Danger zone</h2>
+  <p class="muted" style="font-size:0.88rem;">
+    These act on <strong>every</strong> competition at once — for clearing out test data before the season starts
+    for real. To act on just a few competitions instead, use the checkboxes on the
+    <a href="/admin/competitions">Competitions</a> page.
+  </p>
+
+  <div style="display:flex;flex-direction:column;gap:0.75rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+      <div>
+        <strong style="font-size:0.92rem;">Clear all scores &amp; entries</strong>
+        <p class="muted" style="font-size:0.82rem;margin:0.15rem 0 0;">Wipes every round and entry. Competitions and courses stay.</p>
+      </div>
+      <button type="button" class="btn-danger" id="clearAllScoresBtn">Clear all scores</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:0.75rem;">
+      <div>
+        <strong style="font-size:0.92rem;">Delete all competitions</strong>
+        <p class="muted" style="font-size:0.82rem;margin:0.15rem 0 0;">Deletes every competition and everything under it (scores, entries, pairing sheets). Players and courses stay.</p>
+      </div>
+      <button type="button" class="btn-danger" id="deleteAllCompsBtn">Delete all competitions</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function bulkAction(url, confirmMessage) {
+    if (!confirm(confirmMessage)) return;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: true }),
+    });
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      alert('Something went wrong — please try again.');
+    }
+  }
+
+  document.getElementById('clearAllScoresBtn').addEventListener('click', () => {
+    bulkAction(
+      '/admin/competitions/bulk-clear-scores',
+      `Clear every round and entry across all <%= counts.competitions %> competitions? This can't be undone.`
+    );
+  });
+
+  document.getElementById('deleteAllCompsBtn').addEventListener('click', () => {
+    bulkAction(
+      '/admin/competitions/bulk-delete',
+      `Delete all <%= counts.competitions %> competitions and everything under them? This can't be undone.`
+    );
+  });
+</script>
+
+<%- include('../partials/footer') %>

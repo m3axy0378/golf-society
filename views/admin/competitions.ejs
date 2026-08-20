@@ -4,6 +4,7 @@
   <a href="/admin/players" class="muted">Players</a>
   <a href="/admin/courses" class="muted">Courses</a>
   <a href="/admin/competitions">Competitions</a>
+  <a href="/admin/data" class="muted">Data</a>
 </div>
 
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
@@ -15,16 +16,22 @@
   <% if (competitions.length === 0) { %>
     <p class="muted">No competitions yet.</p>
   <% } else { %>
+    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;margin-bottom:0.75rem;">
+      <input type="checkbox" id="selectAllComps"> Select all
+    </label>
     <ul class="list-plain">
       <% competitions.forEach(c => { %>
         <li style="flex-direction:column;align-items:stretch;gap:0.6rem;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem;">
-            <div>
-              <a href="/competitions/<%= c.id %>"><strong><%= c.name %></strong></a>
-              <% if (c.type !== 'league') { %><span class="badge"><%= TYPE_LABELS[c.type] %></span><% } %>
-              <div class="muted" style="font-size:0.85rem;margin-top:0.15rem;">
-                <%= new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
-                · <%= c.course_names %> · <%= FORMAT_LABELS[c.format] %> · <%= c.rounds_count %> entered
+            <div style="display:flex;align-items:flex-start;gap:0.5rem;">
+              <input type="checkbox" class="comp-checkbox" value="<%= c.id %>" style="margin-top:0.3rem;">
+              <div>
+                <a href="/competitions/<%= c.id %>"><strong><%= c.name %></strong></a>
+                <% if (c.type !== 'league') { %><span class="badge"><%= TYPE_LABELS[c.type] %></span><% } %>
+                <div class="muted" style="font-size:0.85rem;margin-top:0.15rem;">
+                  <%= new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+                  · <%= c.course_names %> · <%= FORMAT_LABELS[c.format] %> · <%= c.rounds_count %> entered
+                </div>
               </div>
             </div>
             <span class="badge <%= c.status === 'closed' ? 'closed' : '' %>"><%= c.status === 'open' ? 'Open' : 'Closed' %></span>
@@ -50,7 +57,49 @@
         </li>
       <% }) %>
     </ul>
+
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);">
+      <span class="muted" style="font-size:0.85rem;align-self:center;">With selected:</span>
+      <button type="button" class="btn-secondary" id="clearSelectedBtn">Clear scores</button>
+      <button type="button" class="btn-danger" id="deleteSelectedBtn">Delete</button>
+    </div>
   <% } %>
 </div>
+
+<script>
+  document.getElementById('selectAllComps').addEventListener('change', (e) => {
+    document.querySelectorAll('.comp-checkbox').forEach((cb) => { cb.checked = e.target.checked; });
+  });
+
+  function selectedIds() {
+    return Array.from(document.querySelectorAll('.comp-checkbox:checked')).map((cb) => parseInt(cb.value, 10));
+  }
+
+  async function bulkAction(url, verb) {
+    const ids = selectedIds();
+    if (ids.length === 0) { alert('Select at least one competition first.'); return; }
+    if (!confirm(`${verb} ${ids.length} competition${ids.length === 1 ? '' : 's'}? This can't be undone.`)) return;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      alert('Something went wrong — please try again.');
+    }
+  }
+
+  const clearBtn = document.getElementById('clearSelectedBtn');
+  const deleteBtn = document.getElementById('deleteSelectedBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => bulkAction('/admin/competitions/bulk-clear-scores', 'Clear all scores and entries for'));
+  }
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', () => bulkAction('/admin/competitions/bulk-delete', 'Permanently delete'));
+  }
+</script>
 
 <%- include('../partials/footer') %>

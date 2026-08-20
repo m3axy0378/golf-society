@@ -420,6 +420,74 @@ router.post(
   })
 );
 
+// Resolves a { ids, all } request body to the actual competition ids to act
+// on — shared by both bulk routes below so "select all" and "select some"
+// go through the same validation.
+async function resolveCompetitionIds(body) {
+  if (body.all) {
+    const { rows } = await db.query('SELECT id FROM competitions');
+    return rows.map((r) => r.id);
+  }
+  const ids = Array.isArray(body.ids) ? body.ids.map((id) => parseInt(id, 10)).filter(Number.isFinite) : [];
+  return ids;
+}
+
+router.post(
+  '/competitions/bulk-clear-scores',
+  asyncHandler(async (req, res) => {
+    const ids = await resolveCompetitionIds(req.body);
+    if (ids.length === 0) return res.status(400).json({ error: 'No competitions selected.' });
+
+    await db.withTransaction(async (client) => {
+      await client.query('DELETE FROM rounds WHERE competition_id = ANY($1)', [ids]);
+      await client.query('DELETE FROM entries WHERE competition_id = ANY($1)', [ids]);
+    });
+
+    res.json({ ok: true, count: ids.length });
+  })
+);
+
+router.post(
+  '/competitions/bulk-delete',
+  asyncHandler(async (req, res) => {
+    const ids = await resolveCompetitionIds(req.body);
+    if (ids.length === 0) return res.status(400).json({ error: 'No competitions selected.' });
+
+    await db.query('DELETE FROM competitions WHERE id = ANY($1)', [ids]);
+
+    res.json({ ok: true, count: ids.length });
+  })
+);
+
+// ---- Data management ----
+router.get(
+  '/data',
+  asyncHandler(async (req, res) => {
+    const { rows } = await db.query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM competitions) AS competitions,
+        (SELECT COUNT(*)::int FROM rounds) AS rounds,
+        (SELECT COUNT(*)::int FROM entries) AS entries,
+        (SELECT COUNT(*)::int FROM players) AS players
+    `);
+    res.render('admin/data', {
+      counts: rows[0],
+      error: null,
+      message: req.query.resetHandicaps === '1' ? 'Every player’s Handicap Index has been reset.' : null,
+    });
+  })
+);
+
+router.post(
+  '/settings/reset-handicaps',
+  asyncHandler(async (req, res) => {
+    const value = parseFloat(req.body.defaultHandicap);
+    const defaultHandicap = Number.isFinite(value) ? value : 28.0;
+    await db.query('UPDATE players SET handicap_index = $1', [defaultHandicap]);
+    res.redirect('/admin/data?resetHandicaps=1');
+  })
+);
+
 router.post(
   '/settings/society-name',
   asyncHandler(async (req, res) => {
