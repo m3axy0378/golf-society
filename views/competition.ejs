@@ -452,7 +452,7 @@
               });
               if (result === 'submitted') {
                 sessionStorage.removeItem(storageKey);
-                window.location.href = '/competitions/<%= comp.id %>';
+                window.location.href = '/competitions/<%= comp.id %>?saved=1';
               } else if (result === 'rejected') {
                 form.submit();
               } else {
