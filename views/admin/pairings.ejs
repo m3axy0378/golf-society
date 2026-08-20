@@ -97,7 +97,7 @@
   .group-avg strong { color: var(--color-gold-light); font-variant-numeric: tabular-nums; }
 
   @media print {
-    .no-print { display: none !important; }
+    .no-print, .topbar, .site-footer { display: none !important; }
     /* !important needed here: body.scoreboard-page's navy background (in
        the main stylesheet, no media guard) otherwise outranks this on
        specificity alone regardless of source order or the print context. */
@@ -316,4 +316,4 @@
 })();
 </script>
 
-<%- include('../partials/footer', { hideTagline: true }) %>
+<%- include('../partials/footer') %>

@@ -506,7 +506,7 @@ button:focus-visible, .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px 
 /* ---- Footer ------------------------------------------------------------- */
 .site-footer {
   background: var(--color-navy);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   text-align: center;
   padding: 1.25rem 1rem;
   font-size: 0.8rem;
