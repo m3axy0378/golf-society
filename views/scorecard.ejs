@@ -1,6 +1,6 @@
-<%- include('partials/header', { title: round.player_name + "'s scorecard" }) %>
+<%- include('partials/header', { title: round.player_name + "'s scorecard", mainClass: 'scoreboard-view' }) %>
 
-<div class="no-print" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;">
+<div class="no-print" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;margin:0.75rem 20px 0;">
   <div>
     <h1 class="mt-0"><%= round.player_name %>'s scorecard</h1>
     <p class="muted" style="margin-top:-0.5rem;">
@@ -16,12 +16,12 @@
   <p><%= round.comp_name %> · <%= new Date(round.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %></p>
 </div>
 
-<p class="muted">
+<p class="muted" style="margin:0 20px;">
   <%= round.course_name %> (<%= round.tee_name %> tees, par <%= round.course_par %>, CR <%= round.course_rating.toFixed(1) %> / SR <%= round.slope_rating %>)
   <% if (round.marker_name) { %> · Marked by <strong><%= round.marker_name %></strong><% } %>
 </p>
 
-<div class="score-summary" style="position:static;">
+<div class="score-summary" style="position:static;margin:0.75rem 20px;">
   <div>
     <span class="sub">Course Hcp</span>
     <strong><%= round.course_handicap %></strong>
@@ -69,17 +69,23 @@
   </div>
 </div>
 
-<a class="muted no-print" href="/competitions/<%= round.competition_id %>">&larr; Back to competition</a>
+<a class="sb-link no-print" style="margin:0 20px;display:inline-block;" href="/competitions/<%= round.competition_id %>">&larr; Back to competition</a>
 
 <style>
   @media print {
     .topbar, .site-footer, .no-print { display: none !important; }
     .print-only { display: block !important; }
+    /* !important needed: body.scoreboard-page's navy background (no media
+       guard, in the main stylesheet) otherwise outranks this on specificity
+       alone regardless of source order or the print context. */
+    body { background: #fff !important; }
+    .scoreboard-view, .scoreboard-view .card, .scoreboard-view th, .scoreboard-view td { color: #12202f !important; }
     body, main.container { padding: 0; margin: 0; max-width: 100%; }
-    .card { border: none; box-shadow: none; padding: 0; }
+    .card { border: none; box-shadow: none; padding: 0; background: none !important; }
+    th, td { border-color: #ddd !important; }
     .score-summary { background: none !important; color: #000 !important; }
     .score-summary .sub, .score-summary strong { color: #000 !important; }
   }
 </style>
 
-<%- include('partials/footer') %>
+<%- include('partials/footer', { hideTagline: true }) %>

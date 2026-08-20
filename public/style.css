@@ -629,7 +629,76 @@ body.scoreboard-page { background: var(--color-navy); }
 .scoreboard-view .stepper button { background: none; border-color: rgba(255, 255, 255, 0.3); color: var(--text-primary); }
 .scoreboard-view .stepper button:hover { background: rgba(255, 255, 255, 0.1); }
 .scoreboard-view .stepper input { background: var(--color-navy); color: var(--text-primary); border-color: rgba(255, 255, 255, 0.18); }
-.scoreboard-view .score-summary { background: var(--sb-card-deep); }
+.scoreboard-view .score-summary { background: var(--sb-card); }
+
+/* Genuinely tabular data (the hole-by-hole scorecard) stays a <table> rather
+   than being forced into the card-row pattern used elsewhere — just needs
+   its light-mode colours (navy headers, navy-on-white rank highlight)
+   swapped for dark-safe equivalents. */
+.scoreboard-view th, .scoreboard-view td { border-color: var(--sb-border); }
+.scoreboard-view th { color: var(--text-primary); }
+.scoreboard-view tr.me { background: var(--sb-fill-gold-soft); }
+.scoreboard-view .rank-1 td:first-child { color: var(--color-gold); }
+.scoreboard-view .leaderboard-stats .stat-label { color: var(--sb-muted); }
+.scoreboard-view .leaderboard-stats strong { color: var(--text-primary); }
+
+/* ---- Auth / setup / error: centred card on the navy ground --------------- */
+.auth-wrap { display: flex; justify-content: center; padding: 40px 20px; }
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--sb-card);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+}
+.auth-card .brand-mark { display: block; margin: 0 auto 14px; }
+.auth-card h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 2rem;
+  letter-spacing: 0.02em;
+  text-align: center;
+  margin: 0 0 4px;
+}
+.auth-card .auth-foot { margin-top: 1rem; font-size: 0.85rem; text-align: center; color: var(--sb-muted); }
+
+/* ---- Handicaps: row list (replaces a table so the big number can carry
+   the same condensed-numeral treatment as the rest of the app) ------------ */
+.hcp-list { display: flex; flex-direction: column; gap: 1px; padding: 12px 20px 0; }
+.hcp-row {
+  background: var(--sb-card);
+  border-left: 3px solid rgba(255, 255, 255, 0.14);
+  padding: 14px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.hcp-row--me { border-left-color: var(--color-gold); }
+.hcp-name { font-weight: 700; font-size: 1.0625rem; color: var(--text-primary); }
+.hcp-basis { font-weight: 500; font-size: 0.75rem; color: var(--sb-muted); margin-top: 2px; }
+.hcp-value-block { display: flex; align-items: center; gap: 10px; }
+.hcp-value {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.875rem;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.hcp-trend { font-weight: 700; font-size: 1.1rem; }
+.hcp-trend--down { color: var(--sb-green-light); }
+.hcp-trend--up { color: var(--color-danger); }
+.hcp-edit-form { display: flex; align-items: center; gap: 0.4rem; }
+.hcp-edit-form input {
+  width: 64px;
+  padding: 0.3rem 0.4rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: var(--font-display);
+  text-align: center;
+}
 
 /* ---- Admin: tab row ------------------------------------------------------ */
 .admin-tabs { display: flex; gap: 1.5rem; padding: 16px 20px 0; flex-wrap: wrap; }

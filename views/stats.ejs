@@ -1,11 +1,11 @@
-<%- include('partials/header', { title: 'My Stats' }) %>
+<%- include('partials/header', { title: 'My Stats', mainClass: 'scoreboard-view' }) %>
 
-<h1 class="mt-0">My Stats</h1>
-<p class="muted" style="margin-top:-0.75rem;">
-  Your own history across every competition you've entered.
-</p>
+<div class="comp-header">
+  <h1 class="comp-title" style="text-transform:none;font-size:1.75rem;">My Stats</h1>
+  <p class="comp-meta">Your own history across every competition you've entered.</p>
+</div>
 
-<div class="score-summary" style="position:static;">
+<div class="score-summary" style="position:static;margin:0.75rem 20px;">
   <div>
     <span class="sub">Rounds Played</span>
     <strong><%= myRounds.length %></strong>
@@ -50,9 +50,9 @@
 </div>
 
 <% if (bestRound || worstRound) { %>
-  <div class="grid-2">
+  <div class="grid-2" style="margin:0 20px;width:calc(100% - 40px);">
     <% if (bestRound) { %>
-      <div class="card">
+      <div class="card" style="margin:0.75rem 0;">
         <h2 class="mt-0" style="font-size:1.05rem;">Best round</h2>
         <p class="muted" style="margin-top:-0.5rem;font-size:0.85rem;">
           <%= bestRound.comp_name %> · <%= bestRound.course_name %> ·
@@ -66,7 +66,7 @@
       </div>
     <% } %>
     <% if (worstRound && worstRound.id !== bestRound.id) { %>
-      <div class="card">
+      <div class="card" style="margin:0.75rem 0;">
         <h2 class="mt-0" style="font-size:1.05rem;">Toughest round</h2>
         <p class="muted" style="margin-top:-0.5rem;font-size:0.85rem;">
           <%= worstRound.comp_name %> · <%= worstRound.course_name %> ·
@@ -92,7 +92,7 @@
         <li>
           <span><%= h.playerName %></span>
           <span style="font-size:0.9rem;">
-            <strong style="color:var(--color-green);"><%= h.wins %>W</strong>
+            <strong style="color:var(--sb-green-light);"><%= h.wins %>W</strong>
             &nbsp;–&nbsp;
             <strong style="color:var(--color-danger);"><%= h.losses %>L</strong>
             <% if (h.ties > 0) { %>&nbsp;–&nbsp;<strong class="muted"><%= h.ties %>T</strong><% } %>
@@ -119,7 +119,7 @@
                 <%= r.course_name %> · <%= new Date(r.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
               </div>
             </div>
-            <a class="muted" style="font-size:0.8rem;white-space:nowrap;" href="/rounds/<%= r.id %>/scorecard">Scorecard</a>
+            <a class="sb-link" style="font-size:0.8rem;white-space:nowrap;" href="/rounds/<%= r.id %>/scorecard">Scorecard</a>
           </div>
           <div class="leaderboard-stats">
             <div class="stat"><span class="stat-label">Gross</span><strong><%= r.gross_total %></strong></div>
@@ -133,4 +133,4 @@
   <% } %>
 </div>
 
-<%- include('partials/footer') %>
+<%- include('partials/footer', { hideTagline: true }) %>

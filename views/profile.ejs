@@ -1,12 +1,12 @@
-<%- include('partials/header', { title: 'My profile' }) %>
+<%- include('partials/header', { title: 'My profile', mainClass: 'scoreboard-view' }) %>
 
-<h1 class="mt-0">My profile</h1>
+<h1 style="margin:0.75rem 20px 0;">My profile</h1>
 
 <div class="card" style="max-width:420px;">
   <p><strong><%= player.name %></strong><br><span class="muted"><%= player.email %></span></p>
   <p style="margin-bottom:0;">
-    <a href="/stats">My Stats</a>
-    <% if (currentPlayer.is_admin) { %> &middot; <a href="/admin/players">Admin</a><% } %>
+    <a class="sb-link" href="/stats">My Stats</a>
+    <% if (currentPlayer.is_admin) { %> &middot; <a class="sb-link" href="/admin/players">Admin</a><% } %>
   </p>
 </div>
 
@@ -28,7 +28,7 @@
     <p>Handicap Index <strong style="font-size:1.3rem;"><%= player.handicap_index %></strong></p>
     <p class="muted" style="font-size:0.85rem;">
       Calculated automatically from the best 4 of your last 8 rounds, and updates after every round you submit.
-      See the <a href="/handicaps">Players Handicap</a> page for how it's worked out.
+      See the <a class="sb-link" href="/handicaps">Players Handicap</a> page for how it's worked out.
     </p>
   <% } %>
 </div>
@@ -94,4 +94,4 @@
   </form>
 </div>
 
-<%- include('partials/footer') %>
+<%- include('partials/footer', { hideTagline: true }) %>

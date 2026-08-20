@@ -1,19 +1,21 @@
-<%- include('partials/header', { title: 'Log in' }) %>
+<%- include('partials/header', { title: 'Log in', mainClass: 'scoreboard-view' }) %>
 
-<div class="card" style="max-width:400px;margin:2rem auto 0;">
-  <img src="/img/tee-league-icon-navy.svg" alt="" width="40" height="40" style="display:block;margin:0 auto 0.75rem;">
-  <h1 class="center">Log in</h1>
-  <% if (error) { %><div class="error-box"><%= error %></div><% } %>
-  <form class="stacked" method="POST" action="/login">
-    <label>Email
-      <input type="email" name="email" required autofocus>
-    </label>
-    <label>Password
-      <input type="password" name="password" required>
-    </label>
-    <button type="submit">Log in</button>
-  </form>
-  <p class="muted" style="margin-top:1rem;font-size:0.85rem;">New here? <a href="/signup">Sign up</a> to create an account.</p>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <img class="brand-mark" src="/img/tee-league-icon-gold.svg" alt="" width="40" height="40">
+    <h1>Log in</h1>
+    <% if (error) { %><div class="error-box"><%= error %></div><% } %>
+    <form class="stacked" method="POST" action="/login">
+      <label>Email
+        <input type="email" name="email" required autofocus>
+      </label>
+      <label>Password
+        <input type="password" name="password" required>
+      </label>
+      <button type="submit">Log in</button>
+    </form>
+    <p class="auth-foot">New here? <a class="sb-link" href="/signup">Sign up</a> to create an account.</p>
+  </div>
 </div>
 
-<%- include('partials/footer') %>
+<%- include('partials/footer', { hideTagline: true }) %>

@@ -1,12 +1,12 @@
-<%- include('partials/header', { title: 'Add a course' }) %>
+<%- include('partials/header', { title: 'Add a course', mainClass: 'scoreboard-view' }) %>
 
-<h1 class="mt-0">Add a course to <%= comp.name %></h1>
-<p class="muted" style="margin-top:-0.75rem;">
+<h1 style="margin:0.75rem 20px 0;">Add a course to <%= comp.name %></h1>
+<p class="muted" style="margin:0 20px;">
   Search for the course you're playing and add it to this competition — anyone taking part can do this,
   so if you're playing somewhere that isn't listed yet, add it here.
 </p>
 
-<% if (apiError) { %><div class="error-box"><%= apiError %></div><% } %>
+<% if (apiError) { %><div class="error-box" style="margin:0.75rem 20px;"><%= apiError %></div><% } %>
 
 <% if (availableCourses.length > 0) { %>
   <div class="card" style="max-width:640px;">
@@ -15,7 +15,7 @@
       Pick a course someone's already added for a previous competition — no need to search again.
     </p>
     <form method="POST" action="/competitions/<%= comp.id %>/add-existing-course" style="display:flex;gap:0.5rem;">
-      <select name="courseId" required style="flex:1;min-width:0;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
+      <select name="courseId" required style="flex:1;min-width:0;padding:0.55rem 0.7rem;border:1px solid var(--sb-border);border-radius:8px;font-size:1rem;">
         <option value="">— Choose a saved course —</option>
         <% availableCourses.forEach(c => { %>
           <option value="<%= c.id %>"><%= c.name %> (<%= c.tee_name %> tees, par <%= c.par %>)</option>
@@ -31,7 +31,7 @@
 <div class="card" style="max-width:640px;">
   <form method="GET" action="/competitions/<%= comp.id %>/add-course" style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
     <input type="text" name="q" value="<%= q %>" placeholder="Club name, e.g. Wentworth"
-      style="flex:1;min-width:0;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
+      style="flex:1;min-width:0;padding:0.55rem 0.7rem;border:1px solid var(--sb-border);border-radius:8px;font-size:1rem;">
     <button type="submit" class="btn-secondary">Search</button>
   </form>
 
@@ -42,7 +42,7 @@
       <ul class="list-plain" style="margin-bottom:0;">
         <% clubResults.forEach(c => { %>
           <li>
-            <a href="/competitions/<%= comp.id %>/add-course?clubId=<%= c.id %>&clubName=<%= encodeURIComponent(c.name) %>&city=<%= encodeURIComponent(c.city || '') %>&county=<%= encodeURIComponent(c.county || '') %>">
+            <a class="sb-link" href="/competitions/<%= comp.id %>/add-course?clubId=<%= c.id %>&clubName=<%= encodeURIComponent(c.name) %>&city=<%= encodeURIComponent(c.city || '') %>&county=<%= encodeURIComponent(c.county || '') %>">
               <%= c.name %>
             </a>
             <span class="muted" style="font-size:0.85rem;"><%= [c.city, c.county].filter(Boolean).join(', ') %></span>
@@ -60,7 +60,7 @@
       <div style="display:flex;flex-direction:column;gap:0.5rem;">
         <% clubCourses.forEach(course => { %>
           <form method="POST" action="/competitions/<%= comp.id %>/add-course"
-            style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.7rem;">
+            style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;border:1px solid var(--sb-border);border-radius:8px;padding:0.5rem 0.7rem;">
             <span style="font-size:0.9rem;"><%= course.name %> (par <%= course.par %>, <%= course.holes %> holes)</span>
             <input type="hidden" name="courseId" value="<%= course.id %>">
             <input type="hidden" name="clubName" value="<%= clubName %>">
@@ -72,6 +72,6 @@
   <% } %>
 </div>
 
-<a class="muted" href="/competitions/<%= comp.id %>">&larr; Back to competition</a>
+<a class="sb-link" style="margin:0 20px;display:inline-block;" href="/competitions/<%= comp.id %>">&larr; Back to competition</a>
 
-<%- include('partials/footer') %>
+<%- include('partials/footer', { hideTagline: true }) %>

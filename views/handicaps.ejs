@@ -1,70 +1,54 @@
-<%- include('partials/header', { title: 'Players Handicap' }) %>
+<%- include('partials/header', { title: 'Players Handicap', mainClass: 'scoreboard-view' }) %>
 
-<h1 class="mt-0">Players Handicap</h1>
-<p class="muted" style="margin-top:-0.75rem;">
-  Works like the real-world handicap system, scaled down for a smaller season: each Handicap Index is the average of
-  the best 4 Score Differentials from a player's last 8 rounds (real-world handicapping uses best 8 of last 20).
-  Score Differential = (113 &divide; Slope Rating) &times; (Gross Score &minus; Course Rating), so it's fair whichever
-  course you played. With fewer than 8 rounds, roughly the best half count instead. A new player's Handicap Index
-  starts as whatever was entered for them and switches to fully automatic from their first submitted round.
-</p>
-
-<div class="card">
-  <% if (handicaps.length === 0) { %>
-    <p class="muted">No players yet.</p>
-  <% } else { %>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Player</th>
-            <th class="num">Handicap Index</th>
-            <th>Basis</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% handicaps.forEach(h => { %>
-            <tr class="<%= h.player_id === currentPlayer.id ? 'me' : '' %>">
-              <td><%= h.player_name %></td>
-              <td class="num">
-                <% if (currentPlayer.is_admin) { %>
-                  <form class="inline-form" method="POST" action="/admin/players/<%= h.player_id %>/handicap" style="display:flex;gap:0.4rem;align-items:center;justify-content:flex-end;">
-                    <input type="hidden" name="redirectTo" value="/handicaps">
-                    <% if (h.trend === 'down') { %>
-                      <span class="trend-arrow trend-down" title="Improved since their last round">&darr;</span>
-                    <% } else if (h.trend === 'up') { %>
-                      <span class="trend-arrow trend-up" title="Increased since their last round">&uarr;</span>
-                    <% } %>
-                    <input type="number" step="0.1" name="handicapIndex" value="<%= h.handicap_index %>" style="width:70px;padding:0.25rem 0.4rem;border:1px solid var(--border);border-radius:6px;">
-                    <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Save</button>
-                  </form>
-                <% } else { %>
-                  <% if (h.trend === 'down') { %>
-                    <span class="trend-arrow trend-down" title="Improved since their last round">&darr;</span>
-                  <% } else if (h.trend === 'up') { %>
-                    <span class="trend-arrow trend-up" title="Increased since their last round">&uarr;</span>
-                  <% } %>
-                  <strong><%= h.handicap_index %></strong>
-                <% } %>
-              </td>
-              <td class="muted" style="font-size:0.85rem;">
-                <% if (h.roundsCounted === 0) { %>
-                  Starting handicap &mdash; no rounds submitted yet
-                <% } else { %>
-                  Best <%= h.bestCount %> of last <%= h.roundsCounted %> round<%= h.roundsCounted === 1 ? '' : 's' %>
-                <% } %>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-    <% if (currentPlayer.is_admin) { %>
-      <p class="muted" style="font-size:0.8rem;margin-bottom:0;">
-        Edits here only hold until the player's next round, since it's recalculated automatically after every one.
-      </p>
-    <% } %>
-  <% } %>
+<div class="comp-header">
+  <h1 class="comp-title" style="text-transform:none;font-size:1.75rem;">Players Handicap</h1>
+  <p class="comp-meta">
+    Each Handicap Index is the average of the best 4 Score Differentials from a player's last 8 rounds (real-world
+    handicapping uses best 8 of last 20). With fewer than 8 rounds, roughly the best half count instead. A new
+    player's Handicap Index starts as whatever was entered for them and switches to fully automatic from their
+    first submitted round.
+  </p>
 </div>
 
-<%- include('partials/footer') %>
+<% if (handicaps.length === 0) { %>
+  <div class="sb-empty">NO PLAYERS YET</div>
+<% } else { %>
+  <div class="hcp-list">
+    <% handicaps.forEach(h => { %>
+      <div class="hcp-row <%= h.player_id === currentPlayer.id ? 'hcp-row--me' : '' %>">
+        <div>
+          <div class="hcp-name"><%= h.player_name %></div>
+          <div class="hcp-basis">
+            <% if (h.roundsCounted === 0) { %>
+              Starting handicap &mdash; no rounds submitted yet
+            <% } else { %>
+              Best <%= h.bestCount %> of last <%= h.roundsCounted %> round<%= h.roundsCounted === 1 ? '' : 's' %>
+            <% } %>
+          </div>
+        </div>
+        <% if (currentPlayer.is_admin) { %>
+          <form class="inline-form hcp-edit-form" method="POST" action="/admin/players/<%= h.player_id %>/handicap">
+            <input type="hidden" name="redirectTo" value="/handicaps">
+            <% if (h.trend === 'down') { %><span class="hcp-trend hcp-trend--down" title="Improved since their last round">&darr;</span><% } %>
+            <% if (h.trend === 'up') { %><span class="hcp-trend hcp-trend--up" title="Increased since their last round">&uarr;</span><% } %>
+            <input type="number" step="0.1" name="handicapIndex" value="<%= h.handicap_index %>">
+            <button type="submit" class="btn-secondary" style="padding:0.3rem 0.6rem;">Save</button>
+          </form>
+        <% } else { %>
+          <div class="hcp-value-block">
+            <% if (h.trend === 'down') { %><span class="hcp-trend hcp-trend--down" title="Improved since their last round">&darr;</span><% } %>
+            <% if (h.trend === 'up') { %><span class="hcp-trend hcp-trend--up" title="Increased since their last round">&uarr;</span><% } %>
+            <span class="hcp-value"><%= h.handicap_index %></span>
+          </div>
+        <% } %>
+      </div>
+    <% }) %>
+  </div>
+  <% if (currentPlayer.is_admin) { %>
+    <p class="muted" style="font-size:0.8rem;margin:0.75rem 20px 0;">
+      Edits here only hold until the player's next round, since it's recalculated automatically after every one.
+    </p>
+  <% } %>
+<% } %>
+
+<%- include('partials/footer', { hideTagline: true }) %>
