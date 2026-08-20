@@ -33,6 +33,13 @@
   <% } %>
 </div>
 
+<% if (!showHero) { %>
+  <div class="dashboard-intro">
+    <p class="dashboard-intro-tagline">Pick your comp. Select your score. We'll do the rest.</p>
+    <p class="dashboard-intro-text">Compete in live competitions against golfers across the country, earn points towards the Season's Order of Merit, and keep an eye out for Tee League Majors throughout the year.</p>
+  </div>
+<% } %>
+
 <div class="comp-section-heading">
   <span class="comp-section-title">OPEN COMPETITIONS</span>
   <% if (showAll) { %>

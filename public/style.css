@@ -775,6 +775,23 @@ body.scoreboard-page { background: var(--color-navy); }
 .oom-empty { font-size: 0.85rem; color: var(--sb-muted-2); }
 .oom-empty a { color: var(--color-gold-light); font-weight: 600; }
 
+/* ---- Dashboard: brief intro above the competition list ------------------ */
+.dashboard-intro { margin: 18px 20px 0; }
+.dashboard-intro-tagline {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+}
+.dashboard-intro-text {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--sb-muted);
+  margin: 0;
+}
+
 /* ---- Dashboard: competition list ---------------------------------------- */
 .comp-section-heading {
   padding: 20px 20px 0;
