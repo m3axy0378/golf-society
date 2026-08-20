@@ -30,6 +30,7 @@
             <span class="badge <%= c.status === 'closed' ? 'closed' : '' %>"><%= c.status === 'open' ? 'Open' : 'Closed' %></span>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+            <a class="btn btn-secondary" style="padding:0.25rem 0.6rem;" href="/admin/competitions/<%= c.id %>/pairings">Pairings</a>
             <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/notify"
               onsubmit="return confirm('Send a push notification about &quot;<%= c.name %>&quot; to every player who has notifications enabled?');">
               <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Notify players</button>

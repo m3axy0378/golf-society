@@ -535,6 +535,69 @@ router.post(
   })
 );
 
+// ---- Pairing sheets ----
+router.get(
+  '/competitions/:id/pairings',
+  asyncHandler(async (req, res) => {
+    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
+    const comp = compRows[0];
+    if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
+
+    const { rows: entrants } = await db.query(
+      `SELECT p.id, p.name, p.handicap_index
+       FROM entries e JOIN players p ON p.id = e.player_id
+       WHERE e.competition_id = $1 ORDER BY p.name`,
+      [comp.id]
+    );
+
+    const { rows: existing } = await db.query(
+      'SELECT player_id, group_number, tee_time FROM pairing_groups WHERE competition_id = $1 ORDER BY group_number',
+      [comp.id]
+    );
+
+    res.render('admin/pairings', { comp, entrants, existing, error: null });
+  })
+);
+
+router.post(
+  '/competitions/:id/pairings',
+  asyncHandler(async (req, res) => {
+    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
+    const comp = compRows[0];
+    if (!comp) return res.status(404).json({ error: 'Competition not found.' });
+
+    let groups;
+    try {
+      groups = JSON.parse(req.body.groups);
+    } catch {
+      return res.status(400).json({ error: 'Malformed pairing data.' });
+    }
+    if (!Array.isArray(groups)) return res.status(400).json({ error: 'Malformed pairing data.' });
+
+    const { rows: validEntrants } = await db.query('SELECT player_id FROM entries WHERE competition_id = $1', [comp.id]);
+    const validIds = new Set(validEntrants.map((e) => e.player_id));
+
+    await db.withTransaction(async (client) => {
+      await client.query('DELETE FROM pairing_groups WHERE competition_id = $1', [comp.id]);
+      for (let g = 0; g < groups.length; g++) {
+        const group = groups[g];
+        const teeTime = typeof group.teeTime === 'string' ? group.teeTime.slice(0, 5) : null;
+        const playerIds = Array.isArray(group.playerIds) ? group.playerIds : [];
+        for (const playerId of playerIds) {
+          const id = parseInt(playerId, 10);
+          if (!validIds.has(id)) continue;
+          await client.query(
+            'INSERT INTO pairing_groups (competition_id, player_id, group_number, tee_time) VALUES ($1, $2, $3, $4)',
+            [comp.id, id, g + 1, teeTime]
+          );
+        }
+      }
+    });
+
+    res.json({ ok: true });
+  })
+);
+
 router.post(
   '/entries/:id/toggle-paid',
   asyncHandler(async (req, res) => {

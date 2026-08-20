@@ -207,6 +207,18 @@ CREATE TABLE IF NOT EXISTS course_weather (
   fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(course_id, weather_date)
 );
+
+-- Tee-off groups an admin builds for a competition (who's playing with whom,
+-- and when). Regenerating the sheet replaces every row for that competition
+-- (handled in the app) rather than trying to diff/update in place.
+CREATE TABLE IF NOT EXISTS pairing_groups (
+  id SERIAL PRIMARY KEY,
+  competition_id INTEGER NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  group_number INTEGER NOT NULL,
+  tee_time TEXT,
+  UNIQUE(competition_id, player_id)
+);
 `;
 
 let readyPromise = null;

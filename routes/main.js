@@ -217,6 +217,21 @@ router.get(
     const pendingEntries = allEntries.filter((e) => !e.round_id);
     const hasEntered = allEntries.some((e) => e.player_id === req.session.playerId);
 
+    const { rows: pairingRows } = await db.query(
+      `SELECT pg.group_number, pg.tee_time, p.name AS player_name
+       FROM pairing_groups pg JOIN players p ON p.id = pg.player_id
+       WHERE pg.competition_id = $1 ORDER BY pg.group_number, p.name`,
+      [comp.id]
+    );
+    const pairingGroupsMap = new Map();
+    pairingRows.forEach((row) => {
+      if (!pairingGroupsMap.has(row.group_number)) {
+        pairingGroupsMap.set(row.group_number, { groupNumber: row.group_number, teeTime: row.tee_time, players: [] });
+      }
+      pairingGroupsMap.get(row.group_number).players.push(row.player_name);
+    });
+    const pairingGroups = [...pairingGroupsMap.values()];
+
     res.render('competition', {
       comp,
       courses,
@@ -235,6 +250,7 @@ router.get(
       pendingEntries,
       hasEntered,
       weatherByCourseId,
+      pairingGroups,
       error: null,
     });
   })

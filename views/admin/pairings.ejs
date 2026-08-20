@@ -1,0 +1,312 @@
+<%- include('../partials/header', { title: 'Pairing sheet · ' + comp.name }) %>
+
+<div style="display:flex;gap:1rem;margin-bottom:0.75rem;font-size:0.9rem;" class="no-print">
+  <a href="/admin/players" class="muted">Players</a>
+  <a href="/admin/courses" class="muted">Courses</a>
+  <a href="/admin/competitions" class="muted">Competitions</a>
+</div>
+
+<div class="sheet-head" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;">
+  <div>
+    <span class="badge">Admin &middot; Pairing sheet</span>
+    <h1 class="mt-0"><%= comp.name %></h1>
+    <p class="muted" style="margin-top:-0.5rem;">
+      <%= new Date(comp.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+      &middot; <%= entrants.length %> entered
+    </p>
+  </div>
+  <div class="no-print" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+    <a class="btn-secondary" href="/competitions/<%= comp.id %>">&larr; Back to competition</a>
+    <button type="button" class="btn-secondary" onclick="window.print()">Print sheet</button>
+  </div>
+</div>
+
+<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+
+<% if (entrants.length === 0) { %>
+  <div class="card"><p class="muted" style="margin:0;">Nobody has entered this competition yet — the pairing sheet needs at least one entrant to build groups from.</p></div>
+<% } else { %>
+
+<div class="card no-print" id="controlsCard">
+  <div class="controls-row" style="display:flex;flex-wrap:wrap;gap:1.25rem 1.75rem;align-items:end;">
+    <div class="field" style="display:flex;flex-direction:column;gap:0.35rem;">
+      <label for="groupSize" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">Group size</label>
+      <select id="groupSize" style="padding:0.5rem 0.65rem;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;">
+        <option value="2">2 players</option>
+        <option value="3">3 players</option>
+        <option value="4" selected>4 players</option>
+      </select>
+    </div>
+    <div class="field" style="display:flex;flex-direction:column;gap:0.35rem;">
+      <label for="teeStart" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">First tee time</label>
+      <input type="time" id="teeStart" value="08:00" style="padding:0.5rem 0.65rem;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;">
+    </div>
+    <div class="field" style="display:flex;flex-direction:column;gap:0.35rem;">
+      <label for="teeGap" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">Minutes between groups</label>
+      <input type="number" id="teeGap" min="6" max="20" value="10" style="width:5rem;padding:0.5rem 0.65rem;border:1px solid var(--border);border-radius:8px;font-size:0.95rem;">
+    </div>
+    <div style="display:flex;align-items:center;gap:0.5rem;padding-bottom:0.5rem;">
+      <input type="checkbox" id="balanceHcp" checked style="width:1.05rem;height:1.05rem;accent-color:var(--color-gold);">
+      <label for="balanceHcp" style="font-size:0.88rem;font-weight:600;cursor:pointer;">Balance groups by handicap</label>
+    </div>
+    <button type="button" id="shuffleBtn">Shuffle groups</button>
+  </div>
+  <p class="muted" style="font-size:0.82rem;margin:0.6rem 0 0;">
+    Drag a name into a different group to adjust it by hand. Nothing is saved until you click "Save pairing sheet" below.
+  </p>
+</div>
+
+<div class="groups-meta no-print" style="display:flex;justify-content:space-between;align-items:baseline;margin:1.5rem 0 0.75rem;">
+  <h2 style="font-size:1.2rem;margin:0;">Tee-off order</h2>
+  <span class="muted" id="groupCount" style="font-size:0.85rem;"></span>
+</div>
+<div class="groups-grid" id="groupsGrid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:1rem;"></div>
+
+<div class="no-print" style="margin-top:1.25rem;display:flex;align-items:center;gap:0.75rem;">
+  <button type="button" id="saveBtn">Save pairing sheet</button>
+  <span id="saveStatus" class="muted" style="font-size:0.85rem;"></span>
+</div>
+
+<% } %>
+
+<style>
+  .group-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .group-card-head {
+    background: var(--color-navy); color: var(--text-primary); padding: 0.7rem 0.95rem;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .group-card-head .group-num { font-weight: 800; font-size: 0.95rem; }
+  .group-card-head .group-num .n { color: var(--color-gold); }
+  .group-card-head .tee-time { font-size: 0.85rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .roster { list-style: none; margin: 0; padding: 0.4rem; min-height: 3rem; }
+  .roster li {
+    display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.5rem; border-radius: 6px;
+    font-size: 0.92rem; cursor: grab; user-select: none; transition: background 120ms ease, opacity 120ms ease;
+  }
+  .roster li:hover { background: #faf5e8; }
+  .roster li.dragging { opacity: 0.35; }
+  .roster li .handle { color: var(--border); font-size: 0.85rem; letter-spacing: -1px; flex-shrink: 0; }
+  .roster li .p-name { flex: 1; font-weight: 600; color: var(--text); }
+  .roster li .p-hcp {
+    font-size: 0.78rem; font-weight: 700; color: var(--color-navy); background: var(--bg);
+    border-radius: 999px; padding: 0.1rem 0.5rem; font-variant-numeric: tabular-nums; flex-shrink: 0;
+  }
+  .roster.drag-over { background: #faf5e8; outline: 2px dashed var(--color-gold); outline-offset: -2px; border-radius: 8px; }
+  .group-avg { padding: 0.5rem 0.95rem 0.7rem; font-size: 0.76rem; color: var(--muted); border-top: 1px dashed var(--border); }
+  .group-avg strong { color: var(--color-navy); font-variant-numeric: tabular-nums; }
+
+  @media print {
+    .no-print { display: none !important; }
+    body { background: #fff; }
+    .container { padding: 0; max-width: 100%; }
+    .groups-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .roster li { cursor: default; }
+    .roster li .handle { display: none; }
+  }
+</style>
+
+<script>
+(function () {
+  var entrants = <%- JSON.stringify(entrants.map(e => ({ id: e.id, name: e.name, hcp: e.handicap_index }))) %>;
+  var existing = <%- JSON.stringify(existing) %>;
+
+  var groups = [];
+  var groupSizeEl = document.getElementById('groupSize');
+  var teeStartEl = document.getElementById('teeStart');
+  var teeGapEl = document.getElementById('teeGap');
+  var balanceEl = document.getElementById('balanceHcp');
+  var grid = document.getElementById('groupsGrid');
+  var groupCountEl = document.getElementById('groupCount');
+  var saveBtn = document.getElementById('saveBtn');
+  var saveStatus = document.getElementById('saveStatus');
+
+  if (!grid) return; // no entrants — controls/grid weren't rendered
+
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function byId(id) { return entrants.find(function (p) { return p.id === id; }); }
+
+  // Pre-fill from a previously saved sheet if one exists, so opening this
+  // page doesn't silently reshuffle a pairing sheet that's already been
+  // printed and handed out.
+  function initialGroups() {
+    if (!existing.length) return null;
+    var maxGroup = Math.max.apply(null, existing.map(function (r) { return r.group_number; }));
+    var g = [];
+    for (var i = 0; i < maxGroup; i++) g.push([]);
+    existing.forEach(function (row) {
+      var p = byId(row.player_id);
+      if (p) g[row.group_number - 1].push(p);
+    });
+    var firstTeeTime = existing[0].tee_time;
+    if (firstTeeTime) teeStartEl.value = firstTeeTime;
+    return g.filter(function (grp) { return grp.length > 0; });
+  }
+
+  function buildGroups() {
+    var size = parseInt(groupSizeEl.value, 10);
+    var numGroups = Math.ceil(entrants.length / size);
+    var pool;
+
+    if (balanceEl.checked) {
+      pool = entrants.slice().sort(function (a, b) { return b.hcp - a.hcp; });
+    } else {
+      pool = shuffle(entrants);
+    }
+
+    var next = [];
+    for (var g = 0; g < numGroups; g++) next.push([]);
+
+    if (balanceEl.checked) {
+      var g2 = 0, dir = 1;
+      pool.forEach(function (p) {
+        next[g2].push(p);
+        g2 += dir;
+        if (g2 === numGroups) { g2 = numGroups - 1; dir = -1; }
+        else if (g2 < 0) { g2 = 0; dir = 1; }
+      });
+    } else {
+      pool.forEach(function (p, i) { next[i % numGroups].push(p); });
+    }
+
+    groups = next;
+    render();
+  }
+
+  function addMinutes(hhmm, mins) {
+    var parts = hhmm.split(':').map(Number);
+    var total = parts[0] * 60 + parts[1] + mins;
+    var h = Math.floor(total / 60) % 24;
+    var m = total % 60;
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  }
+
+  function avgHcp(group) {
+    if (!group.length) return '&mdash;';
+    var sum = group.reduce(function (s, p) { return s + p.hcp; }, 0);
+    return (sum / group.length).toFixed(1);
+  }
+
+  var dragSrc = null;
+
+  function render() {
+    var start = teeStartEl.value || '08:00';
+    var gap = parseInt(teeGapEl.value, 10) || 10;
+
+    groupCountEl.textContent = groups.length + ' group' + (groups.length === 1 ? '' : 's') + ' · ' + entrants.length + ' players';
+
+    grid.innerHTML = '';
+    groups.forEach(function (group, gi) {
+      var card = document.createElement('div');
+      card.className = 'group-card';
+
+      var head = document.createElement('div');
+      head.className = 'group-card-head';
+      head.innerHTML =
+        '<span class="group-num">Group <span class="n">' + (gi + 1) + '</span></span>' +
+        '<span class="tee-time">' + addMinutes(start, gap * gi) + '</span>';
+      card.appendChild(head);
+
+      var ul = document.createElement('ul');
+      ul.className = 'roster';
+      ul.dataset.group = gi;
+
+      group.forEach(function (p, pi) {
+        var li = document.createElement('li');
+        li.draggable = true;
+        li.dataset.group = gi;
+        li.dataset.index = pi;
+        li.innerHTML =
+          '<span class="handle">&#8942;&#8942;</span>' +
+          '<span class="p-name"></span>' +
+          '<span class="p-hcp">' + p.hcp.toFixed(1) + '</span>';
+        li.querySelector('.p-name').textContent = p.name;
+
+        li.addEventListener('dragstart', function (e) {
+          dragSrc = { groupIndex: gi, playerIndex: pi };
+          li.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        li.addEventListener('dragend', function () { li.classList.remove('dragging'); });
+
+        ul.appendChild(li);
+      });
+
+      ul.addEventListener('dragover', function (e) { e.preventDefault(); ul.classList.add('drag-over'); });
+      ul.addEventListener('dragleave', function () { ul.classList.remove('drag-over'); });
+      ul.addEventListener('drop', function (e) {
+        e.preventDefault();
+        ul.classList.remove('drag-over');
+        if (!dragSrc) return;
+        var targetGroup = parseInt(ul.dataset.group, 10);
+        if (dragSrc.groupIndex === targetGroup) return;
+        var player = groups[dragSrc.groupIndex].splice(dragSrc.playerIndex, 1)[0];
+        groups[targetGroup].push(player);
+        dragSrc = null;
+        render();
+      });
+
+      card.appendChild(ul);
+
+      var avg = document.createElement('div');
+      avg.className = 'group-avg';
+      avg.innerHTML = 'Avg handicap: <strong>' + avgHcp(group) + '</strong>';
+      card.appendChild(avg);
+
+      grid.appendChild(card);
+    });
+  }
+
+  groupSizeEl.addEventListener('change', buildGroups);
+  balanceEl.addEventListener('change', buildGroups);
+  teeStartEl.addEventListener('change', render);
+  teeGapEl.addEventListener('change', render);
+  document.getElementById('shuffleBtn').addEventListener('click', buildGroups);
+
+  saveBtn.addEventListener('click', async function () {
+    var start = teeStartEl.value || '08:00';
+    var gap = parseInt(teeGapEl.value, 10) || 10;
+    var payload = groups
+      .filter(function (g) { return g.length > 0; })
+      .map(function (g, gi) {
+        return { teeTime: addMinutes(start, gap * gi), playerIds: g.map(function (p) { return p.id; }) };
+      });
+
+    saveBtn.disabled = true;
+    saveStatus.textContent = 'Saving…';
+    try {
+      const res = await fetch('/admin/competitions/<%= comp.id %>/pairings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'groups=' + encodeURIComponent(JSON.stringify(payload)),
+      });
+      if (res.ok) {
+        saveStatus.textContent = 'Saved — visible to all players now.';
+      } else {
+        saveStatus.textContent = 'Something went wrong saving this — please try again.';
+      }
+    } catch {
+      saveStatus.textContent = 'Could not reach the server — check your connection and try again.';
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+
+  var loaded = initialGroups();
+  if (loaded) {
+    groups = loaded;
+    render();
+  } else {
+    buildGroups();
+  }
+})();
+</script>
+
+<%- include('../partials/footer') %>
