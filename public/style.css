@@ -578,6 +578,18 @@ body.scoreboard-page { background: var(--color-navy); }
 }
 .scoreboard-view .success-box { margin: 0.75rem 20px; }
 
+/* form.stacked input/select carry an explicit white background at higher
+   specificity than the plain ".scoreboard-view input" rule above, so admin
+   forms built with the .stacked convention (Add a player, new competition,
+   new/edit course) need their own equally-specific override to actually
+   pick up the dark styling instead of staying white-on-white's opposite. */
+.scoreboard-view form.stacked input,
+.scoreboard-view form.stacked select {
+  background: var(--color-navy);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
 /* Secondary/danger buttons default to navy-on-white and white-fill, which
    read as light-mode controls — recoloured here so every admin screen
    (built from the same .card/.btn-secondary/.badge vocabulary as the rest
