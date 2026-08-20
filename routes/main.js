@@ -75,6 +75,37 @@ async function attachHoleData(rounds) {
   }));
 }
 
+// The single figure the leaderboard leads with: points for Stableford, net
+// for net stroke play, gross for gross stroke play.
+function decidingScore(format, round) {
+  if (format === 'stableford') return round.stableford_points;
+  if (format === 'net_stroke') return round.net_total;
+  return round.gross_total;
+}
+
+// Adds the leaderboard's visual-only fields to an already-ranked list: the
+// gap-to-leader figure and the proportional gap-bar width under each row.
+// Stableford is higher-is-better; both stroke-play formats are lower-is-better.
+function attachLeaderboardDisplay(format, ranked) {
+  if (ranked.length === 0) return ranked;
+  const leaderScore = decidingScore(format, ranked[0]);
+  const higherIsBetter = format === 'stableford';
+  return ranked.map((r) => {
+    const score = decidingScore(format, r);
+    const isLeader = r.rank === 1;
+    let barPct;
+    let gapDisplay = null;
+    if (higherIsBetter) {
+      barPct = leaderScore > 0 ? Math.max(4, (score / leaderScore) * 100) : 100;
+      if (!isLeader) gapDisplay = `${score - leaderScore}`;
+    } else {
+      barPct = score > 0 ? Math.max(4, (leaderScore / score) * 100) : 100;
+      if (!isLeader) gapDisplay = `+${score - leaderScore}`;
+    }
+    return { ...r, decidingScore: score, barPct, gapDisplay };
+  });
+}
+
 async function getRoundsForCompetition(competitionId) {
   const { rows } = await db.query(
     `SELECT r.*, p.name AS player_name, co.name AS course_name
@@ -87,25 +118,78 @@ async function getRoundsForCompetition(competitionId) {
   return attachHoleData(rows);
 }
 
+// 1st/2nd/3rd/4th... for the Order of Merit rank suffix.
+function ordinalSuffix(n) {
+  const j = n % 10;
+  const k = n % 100;
+  if (j === 1 && k !== 11) return 'st';
+  if (j === 2 && k !== 12) return 'nd';
+  if (j === 3 && k !== 13) return 'rd';
+  return 'th';
+}
+
+// Shared by /dashboard (one player's rank) and /season (the full table) so
+// both always agree on the same numbers.
+async function getSeasonStandings() {
+  const { rows: competitions } = await db.query(
+    "SELECT id, name, format, comp_date, type FROM competitions WHERE type != 'sprint' ORDER BY comp_date"
+  );
+  const { rows: allRoundsRaw } = await db.query(
+    `SELECT r.*, p.name AS player_name
+     FROM rounds r JOIN players p ON p.id = r.player_id`
+  );
+  const allRounds = await attachHoleData(allRoundsRaw);
+  return { competitions, standings: computeSeasonStandings(competitions, allRounds) };
+}
+
 router.get(
   '/dashboard',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: competitions } = await db.query(
+    const showAll = req.query.filter === 'all';
+    const { rows: allCompetitions } = await db.query(
       `SELECT c.*,
         (SELECT STRING_AGG(co.name, ', ' ORDER BY co.name) FROM competition_courses cc
           JOIN courses co ON co.id = cc.course_id WHERE cc.competition_id = c.id) AS course_names,
         (SELECT COUNT(*) FROM rounds r WHERE r.competition_id = c.id) AS rounds_count
        FROM competitions c
-       ORDER BY c.comp_date DESC`
+       ORDER BY c.comp_date ASC`
     );
+    const filtered = showAll ? allCompetitions : allCompetitions.filter((c) => c.status === 'open');
 
-    const { rows: myEntries } = await db.query('SELECT competition_id FROM entries WHERE player_id = $1', [
-      req.session.playerId,
-    ]);
-    const myEntryCompIds = new Set(myEntries.map((e) => e.competition_id));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const competitions = filtered.map((c) => {
+      const compDate = new Date(c.comp_date);
+      compDate.setHours(0, 0, 0, 0);
+      return { ...c, daysLeft: Math.ceil((compDate - today) / 86400000) };
+    });
 
-    res.render('dashboard', { competitions, myEntryCompIds, FORMAT_LABELS, TYPE_LABELS });
+    const { rows: myEntries } = await db.query(
+      'SELECT competition_id, entry_fee_paid FROM entries WHERE player_id = $1',
+      [req.session.playerId]
+    );
+    const myEntriesByComp = new Map(myEntries.map((e) => [e.competition_id, e]));
+
+    const { standings } = await getSeasonStandings();
+    const myIndex = standings.findIndex((s) => s.player_id === req.session.playerId);
+    const oom =
+      myIndex === -1
+        ? null
+        : {
+            rank: myIndex + 1,
+            suffix: ordinalSuffix(myIndex + 1),
+            totalPlayers: standings.length,
+            points: Math.round(standings[myIndex].totalPoints * 10) / 10,
+            gapToLeader: myIndex === 0 ? 0 : Math.round((standings[0].totalPoints - standings[myIndex].totalPoints) * 10) / 10,
+          };
+
+    const showHero = !res.locals.currentPlayer.dashboard_intro_seen;
+    if (showHero) {
+      await db.query('UPDATE players SET dashboard_intro_seen = TRUE WHERE id = $1', [req.session.playerId]);
+    }
+
+    res.render('dashboard', { competitions, myEntriesByComp, FORMAT_LABELS, TYPE_LABELS, oom, showHero, showAll });
   })
 );
 
@@ -197,8 +281,9 @@ router.get(
     }
 
     const rounds = await getRoundsForCompetition(comp.id);
-    const ranked = rankCompetition(comp.format, rounds);
+    let ranked = rankCompetition(comp.format, rounds);
     ranked.sort((a, b) => a.rank - b.rank);
+    ranked = attachLeaderboardDisplay(comp.format, ranked);
 
     const reactionsByRound = await getReactionsByRound(ranked.map((r) => r.id), req.session.playerId);
 
@@ -251,6 +336,7 @@ router.get(
       hasEntered,
       weatherByCourseId,
       pairingGroups,
+      justSaved: req.query.saved === '1',
       error: null,
     });
   })
@@ -375,7 +461,7 @@ router.post(
       await updatePlayerHandicap(client.query.bind(client), player.id);
     });
 
-    res.redirect(`/competitions/${comp.id}`);
+    res.redirect(`/competitions/${comp.id}?saved=1`);
   })
 );
 
@@ -549,16 +635,7 @@ router.get(
   '/season',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: competitions } = await db.query(
-      "SELECT id, name, format, comp_date, type FROM competitions WHERE type != 'sprint' ORDER BY comp_date"
-    );
-    const { rows: allRoundsRaw } = await db.query(
-      `SELECT r.*, p.name AS player_name
-       FROM rounds r JOIN players p ON p.id = r.player_id`
-    );
-    const allRounds = await attachHoleData(allRoundsRaw);
-
-    const standings = computeSeasonStandings(competitions, allRounds);
+    const { competitions, standings } = await getSeasonStandings();
     res.render('season', { standings, competitionsCount: competitions.length });
   })
 );

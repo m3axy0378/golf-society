@@ -85,7 +85,7 @@ app.use(
     const settingsPromise = db.getSettings({ society_name: 'Golf Society', pairing_sheet_enabled: 'true' });
     if (req.session.playerId) {
       const { rows } = await db.query(
-        'SELECT id, name, email, handicap_index, is_admin FROM players WHERE id = $1',
+        'SELECT id, name, email, handicap_index, is_admin, dashboard_intro_seen FROM players WHERE id = $1',
         [req.session.playerId]
       );
       res.locals.currentPlayer = rows[0] || null;
@@ -101,6 +101,7 @@ app.use(
     res.locals.vapidPublicKey = process.env.VAPID_PUBLIC_KEY || null;
     res.locals.baseUrl = `${req.protocol}://${req.get('host')}`;
     res.locals.pairingSheetEnabled = settings.pairing_sheet_enabled !== 'false';
+    res.locals.currentPath = req.path;
     next();
   })
 );

@@ -38,6 +38,22 @@
 
   --font-heading: "Gotham", "Inter", Arial, Helvetica, sans-serif;
   --font-body: "Inter", Arial, Helvetica, sans-serif;
+
+  /* "Scoreboard" direction — condensed display type + navy-first surfaces,
+     scoped to specific screens (see the `.scoreboard-view` rules below)
+     rather than repointing the tokens above, so pages that haven't been
+     redesigned yet (season, handicaps, stats, profile, admin, auth) keep
+     their current look untouched. --font-display IS applied globally to the
+     shared app-bar/nav chrome, since that's shared across every page. */
+  --font-display: "Barlow Condensed", "Inter", Arial, Helvetica, sans-serif;
+  --sb-card: var(--color-navy-2);
+  --sb-card-deep: #05101a;
+  --sb-muted: #8fa1b3;
+  --sb-muted-2: #5b7185;
+  --sb-green-light: #6fbf9d;
+  --sb-border: rgba(255, 255, 255, 0.09);
+  --sb-border-gold: rgba(201, 162, 74, 0.35);
+  --sb-fill-gold-soft: rgba(201, 162, 74, 0.16);
 }
 
 * { box-sizing: border-box; }
@@ -81,15 +97,16 @@ h1, h2, h3, .brand, .logo-wordmark {
 }
 
 .brand-icon {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
 }
 
-.brand-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.15;
+.topbar .logo-wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: 0.12em;
 }
 
 .logo-wordmark {
@@ -97,41 +114,82 @@ h1, h2, h3, .brand, .logo-wordmark {
 }
 .logo-wordmark .accent { color: var(--color-gold); }
 
-.society-name {
-  font-size: 0.7rem;
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0.01em;
-  color: var(--text-secondary);
-}
-
-.topnav {
+.topbar-right {
   display: flex;
   align-items: center;
-  gap: 1.35rem;
-  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-.topnav a, .topnav .link-button {
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-size: 0.92rem;
+.season-chip {
+  font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.01em;
-  padding-bottom: 0.2rem;
-  border-bottom: 2px solid transparent;
-  transition: color 180ms ease, border-color 180ms ease;
+  color: var(--sb-muted-2);
+  white-space: nowrap;
 }
 
-.topnav a:hover, .topnav .link-button:hover {
-  color: var(--text-primary);
+/* ---- Shared app navigation --------------------------------------------
+   A single 4-item nav: a fixed bottom tab bar (icon + label) below 700px,
+   an inline underlined nav in the app bar at 700px and up. Replaces the
+   old wrapping .topnav, which broke onto two rows at phone widths. */
+.app-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  background: var(--sb-card-deep);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 8px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.app-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  color: var(--sb-muted-2);
   text-decoration: none;
-  border-bottom-color: var(--color-gold);
+  padding: 4px 0;
+  transition: color 180ms ease;
+}
+.app-nav-item:hover { color: var(--color-gold-light); text-decoration: none; }
+.app-nav-item.active { color: var(--color-gold); }
+
+.app-nav-icon { flex-shrink: 0; }
+
+.app-nav-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.topnav a.active {
-  color: var(--text-primary);
-  border-bottom-color: var(--color-gold);
+body.has-app-nav { padding-bottom: 0; }
+@media (max-width: 699px) {
+  body.has-app-nav .container { padding-bottom: 92px; }
+}
+
+@media (min-width: 700px) {
+  .app-nav {
+    position: static;
+    background: none;
+    border-top: none;
+    padding: 0;
+    gap: 1.35rem;
+  }
+  .app-nav-item {
+    flex: none;
+    flex-direction: row;
+    gap: 0.45rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 2px solid transparent;
+  }
+  .app-nav-icon { display: none; }
+  .app-nav-label { font-size: 0.92rem; letter-spacing: 0.01em; }
+  .app-nav-item.active { border-bottom-color: var(--color-gold); color: var(--text-primary); }
 }
 
 .inline-form { display: inline; }
@@ -440,6 +498,9 @@ button:focus-visible, .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px 
   font-size: 0.85rem;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
+@media (max-width: 699px) {
+  body.has-app-nav .offline-banner { bottom: calc(0.75rem + 78px); }
+}
 .offline-banner button { padding: 0.35rem 0.7rem; font-size: 0.82rem; flex-shrink: 0; }
 
 /* ---- Footer ------------------------------------------------------------- */
@@ -470,3 +531,566 @@ button:focus-visible, .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px 
 .reaction-btn:hover { background: var(--card-alt, #f2f2f0); }
 .reaction-btn.reacted { background: var(--color-gold); border-color: var(--color-gold); color: var(--color-navy); font-weight: 700; }
 .reaction-btn .reaction-count { margin-left: 0.15rem; font-size: 0.78rem; }
+
+/* ==========================================================================
+   "Scoreboard" direction — navy-first dashboard, competition/leaderboard and
+   score-entry screens. Scoped entirely under .scoreboard-view (applied to
+   <main> on those three views only) so every other page is unaffected.
+   ========================================================================== */
+@keyframes sb-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes sb-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes sb-pop { 0% { transform: scale(1); } 50% { transform: scale(1.06); } 100% { transform: scale(1); } }
+
+.scoreboard-view {
+  background: var(--color-navy);
+  color: var(--text-primary);
+  margin-top: -1.5rem;
+  padding: 0 0 2rem;
+}
+@media (min-width: 700px) {
+  .scoreboard-view { margin-top: -1.5rem; padding: 1.5rem 0 3rem; }
+}
+.scoreboard-view h1, .scoreboard-view h2, .scoreboard-view h3 { color: var(--text-primary); }
+.scoreboard-view a { color: inherit; }
+.scoreboard-view .muted { color: var(--sb-muted); }
+
+/* Secondary sections on the competition page that aren't individually
+   itemised in the design spec (entry fee, pairing sheet, admin actions) get
+   the same dark-card treatment as the rest of the page for consistency. */
+.scoreboard-view .card {
+  background: var(--sb-card);
+  border-color: var(--sb-border);
+  margin: 0.75rem 20px;
+}
+.scoreboard-view .card h2, .scoreboard-view .card h3 { font-size: 1rem; }
+.scoreboard-view select, .scoreboard-view input {
+  background: var(--color-navy);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.scoreboard-view .error-box {
+  background: rgba(166, 58, 47, 0.14);
+  border-color: rgba(166, 58, 47, 0.5);
+  color: #f0b8b0;
+  margin: 0.75rem 20px;
+}
+.scoreboard-view .success-box { margin: 0.75rem 20px; }
+
+.sb-empty {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.03em;
+  color: var(--sb-muted-2);
+  padding: 1.5rem 20px;
+}
+
+/* ---- Dashboard: Order of Merit block ----------------------------------- */
+.oom-block {
+  margin: 18px 20px 0;
+  padding: 18px 0 16px;
+  border-top: 1px solid var(--sb-border-gold);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.oom-kicker {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  margin-bottom: 12px;
+}
+.oom-row { display: flex; align-items: flex-end; gap: 8px; }
+.oom-rank {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 4.75rem;
+  line-height: 0.8;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.oom-suffix {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.375rem;
+  letter-spacing: 0.05em;
+  color: var(--sb-muted-2);
+  padding-bottom: 8px;
+}
+.oom-spacer { flex: 1; }
+.oom-side { text-align: right; padding-bottom: 6px; }
+.oom-points {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 2.125rem;
+  line-height: 0.9;
+  color: var(--color-gold);
+  font-variant-numeric: tabular-nums;
+}
+.oom-gap { font-size: 0.6875rem; font-weight: 600; color: var(--sb-muted-2); margin-top: 4px; }
+.oom-empty { font-size: 0.85rem; color: var(--sb-muted-2); }
+.oom-empty a { color: var(--color-gold-light); font-weight: 600; }
+
+/* ---- Dashboard: competition list ---------------------------------------- */
+.comp-section-heading {
+  padding: 20px 20px 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.comp-section-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.375rem;
+  letter-spacing: 0.1em;
+  color: var(--text-primary);
+}
+.comp-filter-link {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  color: var(--color-gold);
+  text-decoration: none;
+}
+
+.comp-list { display: flex; flex-direction: column; gap: 1px; padding: 12px 20px 0; }
+.comp-row {
+  background: var(--sb-card);
+  border-left: 3px solid rgba(255, 255, 255, 0.14);
+  padding: 14px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  text-decoration: none;
+  color: inherit;
+  opacity: 0;
+  animation: sb-rise 400ms ease both;
+}
+.comp-row--major { border-left-color: var(--color-gold); }
+.comp-row--entered { border-left-color: var(--color-green); }
+.comp-row--sprint { border-left-color: var(--color-blue); }
+.comp-list .comp-row:nth-child(1) { animation-delay: 0ms; }
+.comp-list .comp-row:nth-child(2) { animation-delay: 60ms; }
+.comp-list .comp-row:nth-child(3) { animation-delay: 120ms; }
+.comp-list .comp-row:nth-child(4) { animation-delay: 180ms; }
+.comp-list .comp-row:nth-child(5) { animation-delay: 240ms; }
+.comp-list .comp-row:nth-child(6) { animation-delay: 300ms; }
+.comp-row:hover { background: #16314a; }
+.comp-row:active { transform: translateY(1px); background: #0d1f30; }
+.comp-row-kicker {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  margin-bottom: 4px;
+}
+.comp-row-kicker--entered { color: var(--sb-green-light); }
+.comp-row-kicker--sprint { color: var(--color-sky); }
+.comp-row-name { font-weight: 700; font-size: 1.125rem; color: var(--text-primary); }
+.comp-row-meta { font-weight: 500; font-size: 0.75rem; color: var(--sb-muted); margin-top: 4px; }
+.comp-row-days-wrap { text-align: right; flex: none; }
+.comp-row-days {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.875rem;
+  line-height: 0.9;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.comp-row-days--soon { color: var(--color-gold-light); }
+.comp-row-days--closed { color: var(--sb-muted-2); font-size: 1.1rem; }
+.comp-row-days-label {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.5625rem;
+  letter-spacing: 0.12em;
+  color: var(--sb-muted-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comp-row { animation: none; opacity: 1; }
+}
+
+/* ---- Competition page: header block -------------------------------------- */
+.comp-header { padding: 6px 20px 16px; }
+.comp-back-link {
+  display: inline-block;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--sb-muted);
+  text-decoration: none;
+  margin-bottom: 9px;
+}
+.comp-back-link:hover { color: var(--text-primary); }
+.comp-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 2.5rem;
+  line-height: 0.95;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0;
+}
+.comp-meta { font-weight: 500; font-size: 0.75rem; line-height: 1.5; color: var(--sb-muted); margin-top: 6px; }
+.comp-fact-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--sb-border-gold);
+}
+.comp-fact {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.625rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--sb-muted);
+}
+.comp-fact--status { color: var(--color-gold); }
+.comp-fact-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 12px 20px 0; }
+.comp-fact-actions .btn-secondary, .comp-fact-actions .btn-danger { border-color: rgba(255, 255, 255, 0.3); color: var(--text-primary); }
+.comp-fact-actions .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* ---- Competition page: your-round strip ---------------------------------- */
+.your-round-strip {
+  margin: 0 20px;
+  background: var(--sb-card);
+  border-radius: 10px;
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.yrs-kicker {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.59375rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  margin-bottom: 5px;
+}
+.yrs-figures { display: flex; gap: 18px; flex-wrap: wrap; }
+.yrs-figure {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.625rem;
+  line-height: 0.9;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.yrs-figure--points { color: var(--color-gold); }
+.yrs-figure .unit { font-family: var(--font-body); font-size: 0.6875rem; color: var(--sb-muted-2); letter-spacing: 0.1em; }
+.yrs-card-btn {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-gold-light);
+  border: 1px solid rgba(201, 162, 74, 0.5);
+  border-radius: 7px;
+  padding: 7px 9px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.yrs-card-btn:hover { background: var(--sb-fill-gold-soft); }
+.yrs-note { font-size: 0.8rem; color: var(--sb-muted); margin: 10px 20px 0; }
+
+/* ---- Competition page: leaderboard v2 ------------------------------------ */
+.lb-section { padding: 20px 20px 0; }
+.lb-heading-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 0.35rem; }
+.lb-heading {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  color: var(--text-primary);
+}
+.lb-explainer-toggle {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  color: var(--sb-muted-2);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.lb-explainer-toggle:hover { color: var(--sb-muted); }
+.lb-explainer {
+  display: none;
+  font-size: 0.8rem;
+  color: var(--sb-muted);
+  margin: -8px 0 14px;
+}
+.lb-explainer.open { display: block; }
+
+.lb-list { list-style: none; margin: 0; padding: 0; }
+.lb-row {
+  padding: 14px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  opacity: 0;
+  animation: sb-rise 400ms ease both;
+}
+.lb-list li:first-child.lb-row { border-top: 1px solid var(--sb-border-gold); }
+.lb-list li:nth-child(1) { animation-delay: 0ms; }
+.lb-list li:nth-child(2) { animation-delay: 60ms; }
+.lb-list li:nth-child(3) { animation-delay: 120ms; }
+.lb-list li:nth-child(4) { animation-delay: 180ms; }
+.lb-list li:nth-child(5) { animation-delay: 240ms; }
+.lb-list li:nth-child(6) { animation-delay: 300ms; }
+.lb-list li:nth-child(7) { animation-delay: 360ms; }
+.lb-list li:nth-child(8) { animation-delay: 420ms; }
+@media (prefers-reduced-motion: reduce) {
+  .lb-row { animation: none; opacity: 1; }
+}
+.lb-main-row { display: flex; align-items: center; gap: 13px; }
+.lb-rank-diamond {
+  width: 30px; height: 30px; flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--sb-muted);
+  display: grid;
+  place-items: center;
+  transform: rotate(45deg);
+}
+.lb-rank-diamond span { transform: rotate(-45deg); font-family: var(--font-display); font-weight: 700; font-size: 1.0625rem; }
+.lb-row--leader .lb-rank-diamond { background: var(--color-gold); color: var(--color-navy); }
+.lb-name-block { flex: 1; min-width: 0; }
+.lb-name { font-weight: 700; font-size: 1rem; color: var(--text-primary); }
+.lb-sub { font-weight: 500; font-size: 0.6875rem; color: var(--sb-muted); margin-top: 2px; }
+.lb-score-block { text-align: right; flex-shrink: 0; }
+.lb-score {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 2.5rem;
+  line-height: 0.85;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.lb-row--leader .lb-score { color: var(--color-gold); }
+.lb-gap { font-weight: 600; font-size: 0.625rem; letter-spacing: 0.08em; color: var(--color-danger); margin-top: 3px; }
+.lb-bar-track { height: 2px; background: rgba(255, 255, 255, 0.22); margin-top: 10px; transform-origin: left; animation: sb-grow 900ms ease both; }
+.lb-row--leader .lb-bar-track { background: var(--color-gold); animation-duration: 700ms; }
+@media (prefers-reduced-motion: reduce) {
+  .lb-bar-track { animation: none; }
+}
+.lb-reactions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; }
+.lb-reaction-pill {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--sb-muted);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+.lb-reaction-pill.reacted { background: var(--sb-fill-gold-soft); border-color: rgba(201, 162, 74, 0.5); color: #e9edf2; }
+.lb-reaction-pill .count { margin-left: 0.15em; }
+.lb-reaction-add { position: relative; }
+.lb-picker {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
+  background: var(--sb-card-deep);
+  border: 1px solid var(--sb-border);
+  border-radius: 10px;
+  padding: 6px;
+  gap: 2px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+.lb-picker.open { display: flex; }
+.lb-picker button {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  padding: 6px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.lb-picker button:hover { background: rgba(255, 255, 255, 0.08); }
+
+.lb-pending-row { display: flex; align-items: center; justify-content: space-between; }
+.lb-pending-name { font-weight: 700; font-size: 0.9375rem; color: var(--sb-muted); }
+.lb-pending-sub { font-weight: 500; font-size: 0.6875rem; color: var(--sb-muted-2); margin-top: 2px; }
+.lb-pending-dash { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; color: var(--sb-muted-2); }
+
+/* ---- Shared: outline primary button (SUBMIT A SCORE) --------------------- */
+.sb-primary-action { padding: 14px 20px 22px; }
+.sb-outline-btn {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--color-gold);
+  color: var(--color-gold-light);
+  border-radius: 10px;
+  padding: 15px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.375rem;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+.sb-outline-btn:hover { background: rgba(201, 162, 74, 0.12); }
+
+/* ---- Score entry: one hole at a time ------------------------------------- */
+.score-flow { background: var(--color-navy); }
+.sf-exit-row { padding: 6px 20px 14px; display: flex; align-items: center; justify-content: space-between; }
+.sf-exit-link { font-weight: 600; font-size: 0.75rem; color: var(--sb-muted); text-decoration: none; }
+.sf-exit-link:hover { color: var(--text-primary); }
+.sf-course-label { font-family: var(--font-body); font-weight: 700; font-size: 0.625rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sb-muted); }
+
+.sf-progress { display: flex; gap: 3px; padding: 0 20px 18px; }
+.sf-progress-seg { flex: 1; height: 4px; background: rgba(255, 255, 255, 0.14); border: none; padding: 0; cursor: pointer; }
+.sf-progress-seg.done { background: var(--color-gold); }
+.sf-progress-seg.current { background: var(--color-gold-light); }
+
+.sf-hole-heading { text-align: center; padding: 6px 20px 0; }
+.sf-hole-number {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 5.5rem;
+  line-height: 0.8;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+.sf-hole-facts { display: flex; justify-content: center; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
+.sf-hole-fact { font-family: var(--font-body); font-weight: 700; font-size: 0.6875rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--sb-muted); }
+.sf-hole-fact--par { color: var(--color-gold); }
+
+.sf-stepper-row { display: flex; align-items: center; justify-content: center; gap: 26px; padding: 34px 20px 10px; }
+.sf-stepper-btn {
+  width: 62px; height: 62px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: none;
+  color: var(--text-primary);
+  font-size: 1.875rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 180ms ease;
+}
+.sf-stepper-btn.plus { background: var(--color-gold); color: var(--color-navy); border-color: var(--color-gold); }
+.sf-stepper-btn:active { transform: translateY(1px); }
+.sf-stepper-value {
+  width: 132px; height: 132px;
+  border-radius: 50%;
+  background: var(--sb-card);
+  border: 2px solid var(--color-gold);
+  display: grid;
+  place-items: center;
+  transition: transform 180ms ease-out;
+}
+.sf-stepper-value.pop { animation: sb-pop 180ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .sf-stepper-value.pop { animation: none; }
+}
+.sf-stepper-value span {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 5.25rem;
+  line-height: 1;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.sf-stepper-value.empty span { color: var(--sb-muted-2); }
+
+.sf-feedback {
+  text-align: center;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  min-height: 1.2em;
+  transition: opacity 150ms ease;
+}
+.sf-feedback--good { color: var(--sb-green-light); }
+.sf-feedback--ok { color: var(--color-gold-light); }
+.sf-feedback--bad { color: var(--color-danger); }
+
+.sf-chips { display: flex; gap: 8px; padding: 26px 20px 0; justify-content: center; flex-wrap: wrap; }
+.sf-chip {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.125rem;
+  letter-spacing: 0.08em;
+  color: var(--sb-muted);
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.sf-chip.selected { background: var(--color-gold-light); border-color: var(--color-gold-light); color: var(--color-navy); }
+
+.sf-totals {
+  margin: 0 20px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.sf-total-label { font-family: var(--font-body); font-weight: 700; font-size: 0.59375rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sb-muted-2); }
+.sf-total-value { font-family: var(--font-display); font-weight: 600; font-size: 1.875rem; line-height: 0.9; color: var(--text-primary); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.sf-total--points .sf-total-value { color: var(--color-gold); }
+.sf-total--center { text-align: center; }
+.sf-total--right { text-align: right; }
+
+.sf-footer-nav { display: flex; gap: 10px; padding: 6px 20px 22px; }
+.sf-back-btn {
+  width: 56px; flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: none;
+  color: var(--sb-muted);
+  font-size: 1.375rem;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.sf-next-btn {
+  flex: 1;
+  background: var(--color-gold);
+  color: var(--color-navy);
+  border: none;
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.375rem;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: background 180ms ease;
+}
+.sf-next-btn:hover { background: var(--color-gold-light); }
+.sf-next-btn:disabled { opacity: 0.6; cursor: default; }
+
+@media (min-width: 700px) {
+  .score-flow { max-width: 480px; margin: 0 auto; }
+}
+
+/* ---- Setup card: course + marker pick before scoring starts -------------- */
+.sf-setup-card { margin: 0 20px; }

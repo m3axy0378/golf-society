@@ -14,32 +14,37 @@
   <meta name="apple-mobile-web-app-title" content="Tee League">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
-<body>
+<% const navItems = [
+  { key: 'play', href: '/dashboard', label: 'Play', match: (p) => p === '/dashboard' || p.startsWith('/competitions'),
+    icon: '<path d="M6 21V4l11 4-11 4"/>' },
+  { key: 'season', href: '/season', label: 'Season', match: (p) => p === '/season',
+    icon: '<path d="M8 21h8M12 17v4M6 4h12v4a6 6 0 0 1-12 0z"/>' },
+  { key: 'hcp', href: '/handicaps', label: 'Hcp', match: (p) => p === '/handicaps',
+    icon: '<path d="M4 19V9M10 19V5M16 19v-7M22 19h-20"/>' },
+  { key: 'me', href: '/profile', label: 'Me', match: (p) => p === '/profile' || p === '/stats',
+    icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>' },
+]; %>
+<body class="<%= currentPlayer ? 'has-app-nav' : '' %>">
   <header class="topbar">
     <a class="brand" href="/dashboard">
-      <img class="brand-icon" src="/img/tee-league-icon-gold.svg" alt="" width="28" height="28">
-      <span class="brand-text">
-        <span class="logo-wordmark">Tee <span class="accent">League</span></span>
-        <span class="society-name"><%= societyName %></span>
-      </span>
+      <img class="brand-icon" src="/img/tee-league-icon-gold.svg" alt="" width="24" height="24">
+      <span class="logo-wordmark">Tee League</span>
     </a>
     <% if (currentPlayer) { %>
-      <nav class="topnav">
-        <a href="/dashboard">Competitions</a>
-        <a href="/season">Season</a>
-        <a href="/handicaps">Handicaps</a>
-        <a href="/stats">My Stats</a>
-        <a href="/profile">My Profile</a>
-        <% if (currentPlayer.is_admin) { %>
-          <a href="/admin/players">Admin</a>
-        <% } %>
-        <form method="POST" action="/logout" class="inline-form">
-          <button type="submit" class="link-button">Log out</button>
-        </form>
-      </nav>
+      <div class="topbar-right">
+        <span class="season-chip">Season <%= new Date().getFullYear().toString().slice(-2) %></span>
+        <nav class="app-nav" aria-label="Main">
+          <% navItems.forEach((item) => { %>
+            <a class="app-nav-item<%= item.match(typeof currentPath !== 'undefined' ? currentPath : '') ? ' active' : '' %>" href="<%= item.href %>">
+              <svg class="app-nav-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><%- item.icon %></svg>
+              <span class="app-nav-label"><%= item.label %></span>
+            </a>
+          <% }) %>
+        </nav>
+      </div>
     <% } %>
   </header>
-  <main class="container">
+  <main class="container<%= typeof mainClass !== 'undefined' ? ' ' + mainClass : '' %>">

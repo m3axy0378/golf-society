@@ -4,7 +4,13 @@
 
 <div class="card" style="max-width:420px;">
   <p><strong><%= player.name %></strong><br><span class="muted"><%= player.email %></span></p>
+  <p style="margin-bottom:0;">
+    <a href="/stats">My Stats</a>
+    <% if (currentPlayer.is_admin) { %> &middot; <a href="/admin/players">Admin</a><% } %>
+  </p>
+</div>
 
+<div class="card" style="max-width:420px;">
   <% if (message) { %><div class="success-box"><%= message %></div><% } %>
 
   <% if (roundsPlayed === 0) { %>
@@ -81,5 +87,11 @@
     })();
   </script>
 <% } %>
+
+<div class="card" style="max-width:420px;">
+  <form method="POST" action="/logout">
+    <button type="submit" class="btn-secondary">Log out</button>
+  </form>
+</div>
 
 <%- include('partials/footer') %>

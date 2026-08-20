@@ -228,6 +228,11 @@ CREATE TABLE IF NOT EXISTS pairing_groups (
 -- their own need an explicit index here.
 CREATE INDEX IF NOT EXISTS idx_rounds_player_id ON rounds(player_id);
 CREATE INDEX IF NOT EXISTS idx_entries_player_id ON entries(player_id);
+
+-- Drives whether the dashboard shows the full marketing intro (first visit
+-- ever) or just the Order of Merit summary (every visit after). Set once a
+-- player's dashboard has rendered for them the first time.
+ALTER TABLE players ADD COLUMN IF NOT EXISTS dashboard_intro_seen BOOLEAN NOT NULL DEFAULT FALSE;
 `;
 
 let readyPromise = null;

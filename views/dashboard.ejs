@@ -1,34 +1,103 @@
-<%- include('partials/header', { title: 'Competitions' }) %>
+<%- include('partials/header', { title: 'Competitions', mainClass: 'scoreboard-view' }) %>
 
-<div class="card hero">
-  <h2 class="mt-0">Welcome to Tee League 🏌️</h2>
-  <p class="hero-tagline">Play anywhere. Compete everywhere.</p>
-  <p>Choose your competition, pick the course you're playing and submit your score. Compete against your friends, without playing the same course. We'll take care of the rest.</p>
-  <p>Tee League automatically calculates your course handicap, enters your score and updates your position on the Order of Merit.</p>
-  <p>With new competitions constantly opening, there are always more chances to play. Compete and climb the leaderboard, wherever you are in the country.</p>
-  <p>Every round counts. Every score matters. Wherever you play, it all adds up.</p>
-  <p>So grab your clubs, tee it up and see where you rank.</p>
-  <p class="hero-tagline">Play anywhere. Compete everywhere.</p>
-</div>
+<% if (showHero) { %>
+  <div class="card hero" style="margin:0.75rem 20px;">
+    <h2 class="mt-0">Welcome to Tee League 🏌️</h2>
+    <p class="hero-tagline">Play anywhere. Compete everywhere.</p>
+    <p>Choose your competition, pick the course you're playing and submit your score. Compete against your friends, without playing the same course. We'll take care of the rest.</p>
+    <p>Tee League automatically calculates your course handicap, enters your score and updates your position on the Order of Merit.</p>
+    <p>With new competitions constantly opening, there are always more chances to play. Compete and climb the leaderboard, wherever you are in the country.</p>
+    <p>Every round counts. Every score matters. Wherever you play, it all adds up.</p>
+    <p class="hero-tagline">Play anywhere. Compete everywhere.</p>
+  </div>
+<% } %>
 
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
-  <h1 class="mt-0">Competitions</h1>
-  <% if (currentPlayer.is_admin) { %>
-    <a class="btn" href="/admin/competitions/new">+ New competition</a>
+<div class="oom-block">
+  <div class="oom-kicker">Order of Merit</div>
+  <% if (oom) { %>
+    <div class="oom-row">
+      <span class="oom-rank"><%= oom.rank %></span>
+      <span class="oom-suffix"><%= oom.suffix.toUpperCase() %> OF <%= oom.totalPlayers %></span>
+      <div class="oom-spacer"></div>
+      <div class="oom-side">
+        <div class="oom-points"><%= oom.points %> PTS</div>
+        <% if (oom.rank === 1) { %>
+          <div class="oom-gap">Leading the season</div>
+        <% } else { %>
+          <div class="oom-gap"><%= oom.gapToLeader %> behind leader</div>
+        <% } %>
+      </div>
+    </div>
+  <% } else { %>
+    <p class="oom-empty">Play a league or major competition to join the Order of Merit — see the full table on <a href="/season">Season</a>.</p>
   <% } %>
 </div>
 
+<div class="comp-section-heading">
+  <span class="comp-section-title">OPEN COMPETITIONS</span>
+  <% if (showAll) { %>
+    <a class="comp-filter-link" href="/dashboard">OPEN ONLY</a>
+  <% } else { %>
+    <a class="comp-filter-link" href="/dashboard?filter=all">ALL</a>
+  <% } %>
+</div>
+
+<% if (currentPlayer.is_admin) { %>
+  <div style="padding:10px 20px 0;">
+    <a class="btn" href="/admin/competitions/new">+ New competition</a>
+  </div>
+<% } %>
+
 <% if (competitions.length === 0) { %>
-  <div class="card">
-    <p>No competitions yet.</p>
-    <% if (currentPlayer.is_admin) { %>
-      <p class="muted">Start by <a href="/admin/courses/new">adding a course</a>, then create your first competition.</p>
-    <% } %>
+  <div class="sb-empty">
+    <%= showAll ? 'NO COMPETITIONS YET' : 'NO OPEN COMPETITIONS' %>
+  </div>
+  <% if (currentPlayer.is_admin && !showAll) { %>
+    <p class="muted" style="padding:0 20px;">Start by <a href="/admin/courses/new">adding a course</a>, then create your first competition.</p>
+  <% } %>
+<% } else { %>
+  <div class="comp-list">
+    <% competitions.forEach(c => {
+      const myEntry = myEntriesByComp.get(c.id);
+      let rowClass = '';
+      let kickerClass = '';
+      let kickerText = '';
+      if (myEntry) {
+        rowClass = 'comp-row--entered';
+        kickerClass = 'comp-row-kicker--entered';
+        kickerText = '✓ Entered' + (c.entry_fee_enabled ? (myEntry.entry_fee_paid ? ` · £${parseFloat(c.entry_fee_amount).toFixed(2)} paid` : ' · fee due') : '');
+      } else if (c.type === 'major') {
+        rowClass = 'comp-row--major';
+        kickerText = 'Major · Double points';
+      } else if (c.type === 'sprint') {
+        rowClass = 'comp-row--sprint';
+        kickerClass = 'comp-row-kicker--sprint';
+        kickerText = '9 Hole Sprint · Casual';
+      }
+    %>
+      <a class="comp-row <%= rowClass %>" href="/competitions/<%= c.id %>">
+        <div>
+          <% if (kickerText) { %><div class="comp-row-kicker <%= kickerClass %>"><%= kickerText.toUpperCase() %></div><% } %>
+          <div class="comp-row-name"><%= c.name %></div>
+          <div class="comp-row-meta"><%= c.course_names %> · <%= FORMAT_LABELS[c.format] %></div>
+        </div>
+        <div class="comp-row-days-wrap">
+          <% if (c.status === 'closed') { %>
+            <div class="comp-row-days comp-row-days--closed">Closed</div>
+          <% } else if (c.daysLeft < 0) { %>
+            <div class="comp-row-days comp-row-days--soon">Overdue</div>
+          <% } else { %>
+            <div class="comp-row-days <%= c.daysLeft <= 14 ? 'comp-row-days--soon' : '' %>"><%= c.daysLeft %></div>
+            <div class="comp-row-days-label">Days left</div>
+          <% } %>
+        </div>
+      </a>
+    <% }) %>
   </div>
 <% } %>
 
 <% if (vapidPublicKey) { %>
-  <div class="muted" id="push-welcome-status" style="font-size:0.85rem;margin:-0.5rem 0 1rem;display:none;"></div>
+  <div class="muted" id="push-welcome-status" style="font-size:0.85rem;margin:0.75rem 20px 0;display:none;"></div>
   <script src="/push-client.js"></script>
   <script>
     (function () {
@@ -52,25 +121,4 @@
   </script>
 <% } %>
 
-<ul class="list-plain">
-  <% competitions.forEach(c => { %>
-    <li>
-      <div>
-        <a href="/competitions/<%= c.id %>"><strong><%= c.name %></strong></a>
-        <% if (c.type !== 'league') { %><span class="badge"><%= TYPE_LABELS[c.type] %></span><% } %>
-        <div class="muted" style="font-size:0.85rem;">
-          Comp Closes - <%= new Date(c.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
-          · <%= c.course_names %> · <%= FORMAT_LABELS[c.format] %>
-          <% if (c.entry_fee_enabled) { %> · Entry fee £<%= parseFloat(c.entry_fee_amount).toFixed(2) %><% } %>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:0.5rem;">
-        <span class="badge <%= c.status === 'closed' ? 'closed' : '' %>"><%= c.status === 'open' ? 'Open' : 'Closed' %></span>
-        <% if (myEntryCompIds.has(c.id)) { %><span class="badge">✓ Entered</span><% } %>
-        <a class="btn btn-secondary" href="/competitions/<%= c.id %>">View</a>
-      </div>
-    </li>
-  <% }) %>
-</ul>
-
-<%- include('partials/footer') %>
+<%- include('partials/footer', { hideTagline: true }) %>

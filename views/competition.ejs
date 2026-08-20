@@ -1,66 +1,59 @@
-<%- include('partials/header', { title: comp.name }) %>
+<%- include('partials/header', { title: comp.name, mainClass: 'scoreboard-view' }) %>
 
-<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;">
-  <div>
-    <h1 class="mt-0"><%= comp.name %> <% if (comp.type !== 'league') { %><span class="badge"><%= TYPE_LABELS[comp.type] %></span><% } %></h1>
-    <p class="muted" style="margin-top:-0.5rem;">
-      <%= new Date(comp.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
-      ·
-      <% if (courses.length === 1) { %>
-        <%= courses[0].name %> (<%= courses[0].tee_name %> tees, par <%= courses[0].par %>, CR <%= courses[0].course_rating.toFixed(1) %> / SR <%= courses[0].slope_rating %>)
-      <% } else { %>
-        <%= courses.map(c => c.name).join(', ') %>
-      <% } %>
-      · Format: <strong><%= FORMAT_LABELS[comp.format] %></strong>
-      <% if (comp.type === 'sprint') { %> · <span class="muted">Casual — doesn't count towards handicap or season standings</span><% } %>
-    </p>
-  </div>
-  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;">
-    <span class="badge <%= comp.status === 'closed' ? 'closed' : '' %>"><%= comp.status === 'open' ? 'Open for entry' : 'Closed' %></span>
-    <% if (currentPlayer.is_admin) { %>
-      <% if (pairingSheetEnabled) { %><a class="btn btn-secondary" href="/admin/competitions/<%= comp.id %>/pairings">Pairing sheet</a><% } %>
-      <form method="POST" action="/admin/competitions/<%= comp.id %>/notify" class="inline-form"
-        onsubmit="return confirm('Send a push notification about &quot;<%= comp.name %>&quot; to every player who has notifications enabled?');">
-        <button type="submit" class="btn-secondary">Notify players</button>
-      </form>
-      <a class="btn btn-secondary" target="_blank" rel="noopener"
-        href="https://wa.me/?text=<%- encodeURIComponent(`🏌️ New competition: ${comp.name}\nCloses ${new Date(comp.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}\n${baseUrl}/competitions/${comp.id}`) %>">
-        Share to WhatsApp
-      </a>
-      <form method="POST" action="/admin/competitions/<%= comp.id %>/toggle-status" class="inline-form">
-        <button type="submit" class="btn-secondary"><%= comp.status === 'open' ? 'End competition' : 'Reopen' %></button>
-      </form>
-      <form method="POST" action="/admin/competitions/<%= comp.id %>/delete" class="inline-form"
-        onsubmit="return confirm('Delete &quot;<%= comp.name %>&quot; and every score submitted for it? This can\'t be undone.');">
-        <button type="submit" class="btn-danger">Delete</button>
-      </form>
+<div class="comp-header">
+  <a class="comp-back-link" href="/dashboard">&larr; All competitions</a>
+  <h1 class="comp-title"><%= comp.name %></h1>
+  <p class="comp-meta">
+    <%= new Date(comp.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) %>
+    ·
+    <% if (courses.length === 1) { %>
+      <%= courses[0].name %>, <%= courses[0].tee_name %> · Par <%= courses[0].par %> · CR <%= courses[0].course_rating.toFixed(1) %> / SR <%= courses[0].slope_rating %>
+    <% } else { %>
+      <%= courses.map(c => c.name).join(', ') %>
     <% } %>
+    <% if (comp.type === 'sprint') { %> · Casual — doesn't count towards handicap or season standings<% } %>
+  </p>
+  <div class="comp-fact-row">
+    <span class="comp-fact comp-fact--status"><%= comp.status === 'open' ? 'Open' : 'Closed' %></span>
+    <span class="comp-fact"><%= FORMAT_LABELS[comp.format] %></span>
+    <% if (comp.type !== 'league') { %><span class="comp-fact"><%= TYPE_LABELS[comp.type] %></span><% } %>
+    <% courses.filter(c => weatherByCourseId[c.id]).forEach(c => {
+      const w = weatherByCourseId[c.id];
+    %>
+      <span class="comp-fact" title="<%= w.label %><%= w.isForecast ? ' — forecast, may change' : ' — actual conditions that day' %>">
+        <%= w.emoji %> <% if (courses.length > 1) { %><%= c.name %>: <% } %><%= Math.round(w.tempMinC) %>&ndash;<%= Math.round(w.tempMaxC) %>&deg;<% if (w.precipitationMm > 0.1) { %> · <%= w.precipitationMm.toFixed(1) %>mm<% } %><% if (w.isForecast) { %> · forecast<% } %>
+      </span>
+    <% }) %>
   </div>
 </div>
 
-<% const weatherCourses = courses.filter(c => weatherByCourseId[c.id]); %>
-<% if (weatherCourses.length > 0) { %>
-  <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0 0 1rem;">
-    <% weatherCourses.forEach(c => {
-      const w = weatherByCourseId[c.id];
-    %>
-      <span class="weather-chip" title="<%= w.label %><%= w.isForecast ? ' — forecast, may change' : ' — actual conditions that day' %>">
-        <span class="weather-emoji"><%= w.emoji %></span>
-        <% if (courses.length > 1) { %><strong><%= c.name %>:</strong><% } %>
-        <%= Math.round(w.tempMinC) %>&ndash;<%= Math.round(w.tempMaxC) %>&deg;C
-        <% if (w.precipitationMm > 0.1) { %> · <%= w.precipitationMm.toFixed(1) %>mm rain<% } %>
-        <% if (w.isForecast) { %><span class="weather-tag">forecast</span><% } %>
-      </span>
-    <% }) %>
+<% if (currentPlayer.is_admin) { %>
+  <div class="comp-fact-actions">
+    <% if (pairingSheetEnabled) { %><a class="btn-secondary" href="/admin/competitions/<%= comp.id %>/pairings">Pairing sheet</a><% } %>
+    <form method="POST" action="/admin/competitions/<%= comp.id %>/notify" class="inline-form"
+      onsubmit="return confirm('Send a push notification about &quot;<%= comp.name %>&quot; to every player who has notifications enabled?');">
+      <button type="submit" class="btn-secondary">Notify players</button>
+    </form>
+    <a class="btn-secondary" target="_blank" rel="noopener"
+      href="https://wa.me/?text=<%- encodeURIComponent(`🏌️ New competition: ${comp.name}\nCloses ${new Date(comp.comp_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}\n${baseUrl}/competitions/${comp.id}`) %>">
+      Share to WhatsApp
+    </a>
+    <form method="POST" action="/admin/competitions/<%= comp.id %>/toggle-status" class="inline-form">
+      <button type="submit" class="btn-secondary"><%= comp.status === 'open' ? 'End competition' : 'Reopen' %></button>
+    </form>
+    <form method="POST" action="/admin/competitions/<%= comp.id %>/delete" class="inline-form"
+      onsubmit="return confirm('Delete &quot;<%= comp.name %>&quot; and every score submitted for it? This can\'t be undone.');">
+      <button type="submit" class="btn-danger">Delete</button>
+    </form>
   </div>
 <% } %>
 
 <% if (pairingSheetEnabled && pairingGroups.length > 0) { %>
   <div class="card">
-    <h2 class="mt-0" style="font-size:1.05rem;">Tee-off order</h2>
+    <h2 class="mt-0">Tee-off order</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:0.75rem;margin-top:0.75rem;">
       <% pairingGroups.forEach(g => { %>
-        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+        <div style="border:1px solid var(--sb-border);border-radius:8px;overflow:hidden;">
           <div style="background:var(--color-navy);color:var(--text-primary);padding:0.5rem 0.75rem;display:flex;justify-content:space-between;align-items:baseline;">
             <strong style="font-size:0.88rem;">Group <span style="color:var(--color-gold);"><%= g.groupNumber %></span></strong>
             <% if (g.teeTime) { %><span style="font-size:0.8rem;color:var(--text-secondary);font-variant-numeric:tabular-nums;"><%= g.teeTime %></span><% } %>
@@ -110,7 +103,7 @@
           <% }) %>
         </ul>
         <% if (unpaidEntries.length > 0) { %>
-          <a class="btn btn-secondary" target="_blank" rel="noopener" style="margin-top:0.5rem;"
+          <a class="btn-secondary" target="_blank" rel="noopener" style="margin-top:0.5rem;"
             href="https://wa.me/?text=<%- encodeURIComponent(`💰 Entry fee reminder — ${comp.name} (£${feeAmount.toFixed(2)})\nStill to pay: ${unpaidEntries.map(e => e.player_name).join(', ')}\n${comp.entry_fee_link}`) %>">
             Message unpaid players on WhatsApp
           </a>
@@ -121,9 +114,6 @@
     </div>
 
     <script>
-      // Reloads after saving rather than patching the DOM in place, so the
-      // pot total, paid count and unpaid WhatsApp list (computed server-side
-      // above) all stay in sync instead of drifting from what's checked here.
       document.querySelectorAll('.paid-toggle').forEach((box) => {
         box.addEventListener('change', async () => {
           box.disabled = true;
@@ -136,30 +126,19 @@
 <% } %>
 
 <% if (error) { %><div class="error-box"><%= error %></div><% } %>
+<% if (justSaved) { %><div class="success-box" style="margin:0.75rem 20px;">Round saved — scores can't be changed once saved. Ask an admin if this one needs correcting.</div><% } %>
 
 <% if (comp.status === 'open' && myRound) { %>
-  <div class="card">
-    <h2 class="mt-0">Your round is saved</h2>
-    <p class="muted" style="margin-top:-0.5rem;font-size:0.88rem;">
-      <% const myCourse = courses.find(c => c.id === myRound.course_id); %>
-      <% if (myCourse) { %>Played at <strong><%= myCourse.name %></strong>. <% } %>
-      <% if (myRound.marker_name) { %>Marked by <strong><%= myRound.marker_name %></strong>. <% } %>
-      Scores can't be changed once saved — ask an admin if this one needs correcting.
-    </p>
-    <div class="score-summary" style="position:static;">
-      <div>
-        <span class="sub">Gross</span>
-        <strong><%= myRound.gross_total %></strong>
-      </div>
-      <div>
-        <span class="sub">Net</span>
-        <strong><%= myRound.net_total %></strong>
-      </div>
-      <div>
-        <span class="sub">Stableford</span>
-        <strong><%= myRound.stableford_points %></strong>
+  <div class="your-round-strip">
+    <div style="flex:1;">
+      <div class="yrs-kicker">Your round · Saved</div>
+      <div class="yrs-figures">
+        <span class="yrs-figure"><%= myRound.gross_total %> <span class="unit">GRS</span></span>
+        <span class="yrs-figure"><%= myRound.net_total %> <span class="unit">NET</span></span>
+        <span class="yrs-figure yrs-figure--points"><%= myRound.stableford_points %> <span class="unit">PTS</span></span>
       </div>
     </div>
+    <a class="yrs-card-btn" href="/rounds/<%= myRound.id %>/scorecard">Card</a>
   </div>
 <% } else if (comp.status === 'open' && !hasEntered) { %>
   <div class="card">
@@ -173,13 +152,12 @@
     </form>
   </div>
 <% } else if (comp.status === 'open') { %>
-  <div class="card">
+  <div class="card sf-setup-card" id="scoreSetupCard">
     <h2 class="mt-0">Enter your round</h2>
     <p class="muted" style="margin-top:-0.5rem;font-size:0.88rem;">
       Your Handicap Index right now is <strong><%= currentPlayer.handicap_index %></strong>
-      (update it on <a href="/profile">your profile</a> if it's changed).
-      Your Course Handicap for this round will be calculated automatically.
-      Once you save, it's final — double check your scores first, as only an admin can change them after that.
+      (update it on <a href="/profile">your profile</a> if it's changed). Once you save, it's final —
+      double check your scores first, as only an admin can change them after that.
     </p>
 
     <% if (courses.length + otherCourses.length > 0) { %>
@@ -187,7 +165,7 @@
         <label style="display:block;font-size:0.9rem;">
           <span style="display:block;margin-bottom:0.3rem;">Which course did you play?</span>
           <select name="course" onchange="this.form.submit()"
-            style="display:block;width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;background:var(--color-white);color:var(--text);">
+            style="display:block;width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
             <option value="">— Choose a course —</option>
             <% if (courses.length > 0) { %>
               <optgroup label="This competition">
@@ -216,173 +194,365 @@
     </p>
 
     <% if (selectedCourse) { %>
-      <div class="score-summary">
-        <div>
-          <span class="sub">Holes</span>
-          <strong id="summary-holes">0/<%= holes.length %></strong>
-        </div>
-        <div>
-          <span class="sub">Gross</span>
-          <strong id="summary-gross-top">–</strong>
-        </div>
-        <div>
-          <span class="sub">Stableford</span>
-          <strong id="summary-points-top">–</strong>
-        </div>
-      </div>
+      <% if (markers.length > 0) { %>
+        <label style="display:block;font-size:0.9rem;margin-bottom:1rem;">
+          <span style="display:block;margin-bottom:0.3rem;">Who marked your card?</span>
+          <select name="markerId" id="markerSelect" form="score-form" required
+            style="display:block;width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;">
+            <option value="">— Choose a member —</option>
+            <% markers.forEach(m => { %>
+              <option value="<%= m.id %>"><%= m.name %></option>
+            <% }) %>
+          </select>
+        </label>
+      <% } %>
 
-      <form method="POST" action="/competitions/<%= comp.id %>/score" id="score-form">
-        <input type="hidden" name="courseId" value="<%= selectedCourse.id %>">
-
-        <% if (markers.length > 0) { %>
-          <label style="display:block;font-size:0.9rem;margin-bottom:1rem;">
-            <span style="display:block;margin-bottom:0.3rem;">Who marked your card?</span>
-            <select name="markerId" required
-              style="display:block;width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;background:var(--color-white);color:var(--text);">
-              <option value="">— Choose a member —</option>
-              <% markers.forEach(m => { %>
-                <option value="<%= m.id %>"><%= m.name %></option>
-              <% }) %>
-            </select>
-          </label>
-        <% } %>
-
-        <div class="hole-list">
-          <% holes.forEach(h => {
-            const prev = myHoleScores.find(s => s.hole_number === h.hole_number);
-          %>
-            <div class="score-hole-row" data-par="<%= h.par %>" data-si="<%= h.stroke_index %>">
-              <div class="hole-info">
-                <div class="hole-num">Hole <%= h.hole_number %></div>
-                <div class="hole-meta">Par <%= h.par %> · SI <%= h.stroke_index %></div>
-              </div>
-              <div class="stepper">
-                <button type="button" class="minus" aria-label="Fewer strokes on hole <%= h.hole_number %>">&minus;</button>
-                <input type="number" min="1" max="20" inputmode="numeric" name="hole_<%= h.hole_number %>" value="<%= prev ? prev.strokes : '' %>" required>
-                <button type="button" class="plus" aria-label="More strokes on hole <%= h.hole_number %>">+</button>
-              </div>
-            </div>
-          <% }) %>
-        </div>
-
-        <div class="score-summary" style="position:static;">
-          <div>
-            <span class="sub">Gross</span>
-            <strong id="summary-gross-bottom">–</strong>
-          </div>
-          <div>
-            <span class="sub">Net</span>
-            <strong id="summary-net-bottom">–</strong>
-          </div>
-          <div>
-            <span class="sub">Stableford</span>
-            <strong id="summary-points-bottom">–</strong>
-          </div>
-        </div>
-
-        <button type="submit">Save round</button>
-      </form>
-
-      <script>
-        // If the request can't reach the server at all (no signal — common
-        // out on a course), the scores get saved on-device instead of just
-        // failing, and offline-queue.js retries automatically once back
-        // online — from whichever page happens to be open at the time.
-        document.getElementById('score-form').addEventListener('submit', async (e) => {
-          e.preventDefault();
-          if (!confirm('Save this round? Once saved you won\'t be able to change it yourself — only an admin can fix a mistake after this.')) return;
-
-          const form = e.target;
-          const submitBtn = form.querySelector('button[type="submit"]');
-          submitBtn.disabled = true;
-          const payload = Object.fromEntries(new FormData(form).entries());
-          const result = await window.TeeLeagueOfflineQueue.submitOrQueue({
-            action: form.action,
-            payload,
-            competitionId: <%= comp.id %>,
-            competitionName: <%- JSON.stringify(comp.name) %>,
-          });
-
-          if (result === 'submitted') {
-            window.location.href = '/competitions/<%= comp.id %>';
-          } else if (result === 'rejected') {
-            form.submit(); // a real validation error, not connectivity — show the server's error page
-          } else {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Saved on this device — will sync later';
-          }
-        });
-      </script>
+      <button type="button" class="sb-outline-btn" id="startScoringBtn">Start scoring</button>
     <% } else { %>
       <p class="muted">Choose which course you played above to enter your scores.</p>
     <% } %>
   </div>
+
+  <% if (selectedCourse) { %>
+    <form method="POST" action="/competitions/<%= comp.id %>/score" id="score-form">
+      <input type="hidden" name="courseId" value="<%= selectedCourse.id %>">
+
+      <div class="score-flow" id="scoreFlow" hidden>
+          <div class="sf-exit-row">
+            <a class="sf-exit-link" href="/competitions/<%= comp.id %>">&#10005; Exit</a>
+            <span class="sf-course-label"><%= selectedCourse.name %> &middot; <%= selectedCourse.tee_name %></span>
+          </div>
+
+          <div class="sf-progress" id="sfProgress"></div>
+
+          <div class="sf-hole-heading">
+            <div class="sf-hole-number" id="sfHoleNumber">HOLE 1</div>
+            <div class="sf-hole-facts">
+              <span class="sf-hole-fact sf-hole-fact--par" id="sfPar">PAR 4</span>
+              <span class="sf-hole-fact" id="sfSi">SI 1</span>
+              <span class="sf-hole-fact" id="sfReceived">+0 STROKES</span>
+            </div>
+          </div>
+
+          <div class="sf-stepper-row">
+            <button type="button" class="sf-stepper-btn minus" id="sfMinus" aria-label="Fewer strokes">&minus;</button>
+            <div class="sf-stepper-value empty" id="sfValueCircle"><span id="sfValue">&ndash;</span></div>
+            <button type="button" class="sf-stepper-btn plus" id="sfPlus" aria-label="More strokes">+</button>
+          </div>
+          <div class="sf-feedback" id="sfFeedback"></div>
+
+          <div class="sf-chips" id="sfChips"></div>
+
+          <div class="sf-totals">
+            <div class="sf-total">
+              <div class="sf-total-label" id="sfThroughLabel">THROUGH 0</div>
+              <div class="sf-total-value" id="sfGrossTotal">&ndash;</div>
+            </div>
+            <div class="sf-total sf-total--center sf-total--points">
+              <div class="sf-total-label">POINTS</div>
+              <div class="sf-total-value" id="sfPointsTotal">&ndash;</div>
+            </div>
+            <div class="sf-total sf-total--right">
+              <div class="sf-total-label">VS PAR</div>
+              <div class="sf-total-value" id="sfVsPar">&ndash;</div>
+            </div>
+          </div>
+
+          <div class="sf-footer-nav">
+            <button type="button" class="sf-back-btn" id="sfBack" aria-label="Previous hole">&larr;</button>
+            <button type="button" class="sf-next-btn" id="sfNext">Next hole</button>
+          </div>
+        </div>
+
+        <% holes.forEach(h => { %><input type="hidden" name="hole_<%= h.hole_number %>" id="hole-input-<%= h.hole_number %>"><% }) %>
+      </form>
+
+      <script>
+        (function () {
+          const compId = <%= comp.id %>;
+          const holes = <%- JSON.stringify(holes.map(h => ({ number: h.hole_number, par: h.par, si: h.stroke_index }))) %>;
+          const handicapIndex = <%= currentPlayer.handicap_index %>;
+          const slopeRating = <%= selectedCourse.slope_rating %>;
+          const courseRating = <%= selectedCourse.course_rating %>;
+          const coursePar = <%= selectedCourse.par %>;
+          const holesPlayed = holes.length;
+          const fullCourseHcp = Math.round(handicapIndex * (slopeRating / 113) + (courseRating - coursePar));
+          const courseHcp = holesPlayed === 9 ? Math.round(fullCourseHcp / 2) : fullCourseHcp;
+          const storageKey = 'sfDraft:' + compId + ':' + <%= selectedCourse.id %>;
+
+          function strokesReceived(strokeIndex) {
+            if (courseHcp >= 0) {
+              const base = Math.floor(courseHcp / holesPlayed);
+              const extra = (courseHcp % holesPlayed) >= strokeIndex ? 1 : 0;
+              return base + extra;
+            }
+            const posHcp = Math.abs(courseHcp);
+            const base = -Math.floor(posHcp / holesPlayed);
+            const reverseIndex = holesPlayed - strokeIndex + 1;
+            const extra = (posHcp % holesPlayed) >= reverseIndex ? -1 : 0;
+            return base + extra;
+          }
+
+          function stablefordPoints(strokes, par, received) {
+            return Math.max(0, 2 - (strokes - received - par));
+          }
+
+          let currentHole = 0;
+          let strokes = {};
+          try {
+            const saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+            if (saved && saved.strokes) strokes = saved.strokes;
+          } catch (e) { /* ignore a corrupt draft */ }
+
+          function persist() {
+            sessionStorage.setItem(storageKey, JSON.stringify({ strokes: strokes }));
+          }
+
+          const setupCard = document.getElementById('scoreSetupCard');
+          const startBtn = document.getElementById('startScoringBtn');
+          const flow = document.getElementById('scoreFlow');
+          const progressEl = document.getElementById('sfProgress');
+          const holeNumberEl = document.getElementById('sfHoleNumber');
+          const parEl = document.getElementById('sfPar');
+          const siEl = document.getElementById('sfSi');
+          const receivedEl = document.getElementById('sfReceived');
+          const valueCircle = document.getElementById('sfValueCircle');
+          const valueEl = document.getElementById('sfValue');
+          const feedbackEl = document.getElementById('sfFeedback');
+          const chipsEl = document.getElementById('sfChips');
+          const throughLabel = document.getElementById('sfThroughLabel');
+          const grossTotalEl = document.getElementById('sfGrossTotal');
+          const pointsTotalEl = document.getElementById('sfPointsTotal');
+          const vsParEl = document.getElementById('sfVsPar');
+          const backBtn = document.getElementById('sfBack');
+          const nextBtn = document.getElementById('sfNext');
+          const markerSelect = document.getElementById('markerSelect');
+          const form = document.getElementById('score-form');
+
+          progressEl.innerHTML = holes.map((h, i) =>
+            `<button type="button" class="sf-progress-seg" data-index="${i}" aria-label="Hole ${h.number}"></button>`
+          ).join('');
+          const segs = Array.from(progressEl.querySelectorAll('.sf-progress-seg'));
+          segs.forEach((seg) => seg.addEventListener('click', () => { currentHole = parseInt(seg.dataset.index, 10); render(); }));
+
+          function feedbackFor(points) {
+            if (points >= 4) return { label: 'NET EAGLE OR BETTER', cls: 'good' };
+            if (points === 3) return { label: 'NET BIRDIE', cls: 'good' };
+            if (points === 2) return { label: 'NET PAR', cls: 'good' };
+            if (points === 1) return { label: 'NET BOGEY', cls: 'ok' };
+            return { label: 'NET DOUBLE BOGEY+', cls: 'bad' };
+          }
+
+          function setHole(number, value) {
+            strokes[number] = value;
+            document.getElementById('hole-input-' + number).value = value;
+            persist();
+          }
+
+          function render() {
+            const hole = holes[currentHole];
+            segs.forEach((seg, i) => {
+              seg.classList.toggle('current', i === currentHole);
+              seg.classList.toggle('done', i !== currentHole && strokes[holes[i].number] != null);
+            });
+
+            holeNumberEl.textContent = 'HOLE ' + hole.number;
+            parEl.textContent = 'PAR ' + hole.par;
+            siEl.textContent = 'SI ' + hole.si;
+            const received = strokesReceived(hole.si);
+            receivedEl.textContent = (received >= 0 ? '+' : '') + received + ' STROKES';
+
+            const val = strokes[hole.number];
+            valueCircle.classList.toggle('empty', val == null);
+            valueEl.textContent = val == null ? '–' : val;
+
+            if (val == null) {
+              feedbackEl.textContent = '';
+            } else {
+              const points = stablefordPoints(val, hole.par, received);
+              const fb = feedbackFor(points);
+              feedbackEl.textContent = fb.label + ' · ' + points + ' POINT' + (points === 1 ? '' : 'S');
+              feedbackEl.className = 'sf-feedback sf-feedback--' + fb.cls;
+            }
+
+            const chipValues = [
+              { label: 'BIRDIE', value: hole.par - 1 },
+              { label: 'PAR', value: hole.par },
+              { label: 'BOGEY', value: hole.par + 1 },
+              { label: String(hole.par + 2), value: hole.par + 2 },
+            ];
+            chipsEl.innerHTML = chipValues.map((c) =>
+              `<button type="button" class="sf-chip${val === c.value ? ' selected' : ''}" data-value="${c.value}">${c.label}${c.label === String(c.value) ? '' : ' ' + c.value}</button>`
+            ).join('');
+            chipsEl.querySelectorAll('.sf-chip').forEach((chip) => {
+              chip.addEventListener('click', () => { setHole(hole.number, parseInt(chip.dataset.value, 10)); render(); });
+            });
+
+            let holesDone = 0, gross = 0, points = 0, parSoFar = 0;
+            holes.forEach((h) => {
+              const s = strokes[h.number];
+              if (s != null) {
+                holesDone += 1;
+                gross += s;
+                parSoFar += h.par;
+                points += stablefordPoints(s, h.par, strokesReceived(h.si));
+              }
+            });
+            throughLabel.textContent = 'THROUGH ' + holesDone;
+            grossTotalEl.textContent = holesDone ? gross : '–';
+            pointsTotalEl.textContent = holesDone ? points : '–';
+            const vsPar = gross - parSoFar;
+            vsParEl.textContent = holesDone ? (vsPar === 0 ? 'E' : (vsPar > 0 ? '+' + vsPar : vsPar)) : '–';
+
+            nextBtn.textContent = currentHole === holes.length - 1 ? 'Save round' : 'Next hole';
+          }
+
+          document.getElementById('sfMinus').addEventListener('click', () => {
+            const hole = holes[currentHole];
+            const cur = strokes[hole.number];
+            setHole(hole.number, Math.max(1, (cur == null ? hole.par : cur) - 1));
+            render();
+          });
+          document.getElementById('sfPlus').addEventListener('click', () => {
+            const hole = holes[currentHole];
+            const cur = strokes[hole.number];
+            setHole(hole.number, Math.min(20, (cur == null ? hole.par : cur) + 1));
+            render();
+          });
+          valueCircle.addEventListener('animationend', () => valueCircle.classList.remove('pop'));
+
+          backBtn.addEventListener('click', () => { currentHole = Math.max(0, currentHole - 1); render(); });
+          nextBtn.addEventListener('click', () => {
+            if (currentHole < holes.length - 1) { currentHole += 1; render(); return; }
+
+            const missing = holes.find((h) => strokes[h.number] == null);
+            if (missing) {
+              currentHole = holes.indexOf(missing);
+              render();
+              alert('Every hole needs a score before you can save — jumped to hole ' + missing.number + '.');
+              return;
+            }
+            if (markerSelect && !markerSelect.value) {
+              flow.hidden = true;
+              setupCard.hidden = false;
+              markerSelect.reportValidity();
+              return;
+            }
+            if (!confirm('Save this round? Once saved you won\\'t be able to change it yourself — only an admin can fix a mistake after this.')) return;
+
+            nextBtn.disabled = true;
+            nextBtn.textContent = 'SAVING…';
+            (async () => {
+              const payload = Object.fromEntries(new FormData(form).entries());
+              const result = await window.TeeLeagueOfflineQueue.submitOrQueue({
+                action: form.action,
+                payload,
+                competitionId: compId,
+                competitionName: <%- JSON.stringify(comp.name) %>,
+              });
+              if (result === 'submitted') {
+                sessionStorage.removeItem(storageKey);
+                window.location.href = '/competitions/<%= comp.id %>';
+              } else if (result === 'rejected') {
+                form.submit();
+              } else {
+                sessionStorage.removeItem(storageKey);
+                nextBtn.disabled = false;
+                nextBtn.textContent = 'SAVED ON THIS DEVICE';
+              }
+            })();
+          });
+
+          startBtn.addEventListener('click', () => {
+            if (markerSelect && !markerSelect.value) { markerSelect.reportValidity(); return; }
+            setupCard.hidden = true;
+            flow.hidden = false;
+            render();
+          });
+
+          render();
+        })();
+      </script>
+    <% } %>
 <% } else if (myRound) { %>
-  <div class="card">
-    <h2 class="mt-0">Your round</h2>
-    <p>Gross <strong><%= myRound.gross_total %></strong> · Net <strong><%= myRound.net_total %></strong> · Stableford <strong><%= myRound.stableford_points %></strong> pts (Course Hcp <%= myRound.course_handicap %>)</p>
+  <div class="your-round-strip">
+    <div>
+      <div class="yrs-kicker">Your round</div>
+      <div class="yrs-figures">
+        <span class="yrs-figure"><%= myRound.gross_total %> <span class="unit">GRS</span></span>
+        <span class="yrs-figure"><%= myRound.net_total %> <span class="unit">NET</span></span>
+        <span class="yrs-figure yrs-figure--points"><%= myRound.stableford_points %> <span class="unit">PTS</span></span>
+      </div>
+    </div>
   </div>
 <% } %>
 
-<div class="card">
-  <h2 class="mt-0">Leaderboard</h2>
-  <p class="muted" style="margin-top:-0.5rem;font-size:0.85rem;">
+<div class="lb-section">
+  <div class="lb-heading-row">
+    <span class="lb-heading">Leaderboard</span>
+    <button type="button" class="lb-explainer-toggle" id="lbExplainerToggle">Top 3 score points</button>
+  </div>
+  <p class="lb-explainer" id="lbExplainer">
     Only the top 3 earn Order of Merit points for the season standings — 5 for 1st, 3 for 2nd, 1 for 3rd. Ties are
     split by a back-9 countback (then back 6, back 3, last hole).
   </p>
+
   <% if (ranked.length === 0 && pendingEntries.length === 0) { %>
-    <p class="muted">No entries yet.</p>
+    <div class="sb-empty" style="padding-left:0;padding-right:0;">NO ENTRIES YET</div>
   <% } else { %>
-    <ul class="list-plain leaderboard-list">
+    <ul class="lb-list">
       <% ranked.forEach(r => { %>
-        <li class="leaderboard-row <%= r.player_id === currentPlayer.id ? 'me' : '' %> <%= r.rank === 1 ? 'rank-1' : '' %>" style="flex-direction:column;align-items:stretch;gap:0.6rem;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
-            <div>
-              <span class="rank-num"><%= r.rank %></span>
-              <strong><%= r.player_name %></strong>
-              <% if (courses.length > 1) { %><div class="muted" style="font-size:0.8rem;"><%= r.course_name %></div><% } %>
+        <li class="lb-row <%= r.rank === 1 ? 'lb-row--leader' : '' %>">
+          <div class="lb-main-row">
+            <div class="lb-rank-diamond"><span><%= r.rank %></span></div>
+            <div class="lb-name-block">
+              <div class="lb-name"><%= r.player_name %></div>
+              <div class="lb-sub">
+                <%= r.gross_total %> gross · <%= r.course_handicap %> hcp · <%= r.net_total %> net
+                <% if (courses.length > 1) { %> · <%= r.course_name %><% } %>
+              </div>
             </div>
-            <div style="text-align:right;">
-              <% if (comp.entry_fee_enabled) {
-                const entry = allEntries.find(e => e.player_id === r.player_id);
-              %>
-                <% if (entry && entry.entry_fee_paid) { %><span class="badge">Paid</span><% } else { %><span class="muted">–</span><% } %>
-              <% } %>
-              <div style="margin-top:0.3rem;">
-                <a class="muted" style="font-size:0.8rem;" href="/rounds/<%= r.id %>/scorecard">Scorecard</a>
-                <% if (currentPlayer.is_admin) { %>
-                  · <a class="muted" style="font-size:0.8rem;" href="/admin/rounds/<%= r.id %>/edit">Edit</a>
-                <% } %>
+            <div class="lb-score-block">
+              <div class="lb-score"><%= r.decidingScore %></div>
+              <% if (r.gapDisplay !== null) { %><div class="lb-gap"><%= r.gapDisplay %></div><% } %>
+            </div>
+          </div>
+          <div class="lb-bar-track" style="width:<%= r.barPct %>%;"></div>
+          <div class="lb-reactions" data-round-id="<%= r.id %>">
+            <% REACTION_EMOJIS.forEach(emoji => {
+              const info = (reactionsByRound[r.id] && reactionsByRound[r.id][emoji]) || { count: 0, reactedByMe: false };
+              if (info.count > 0) { %>
+                <button type="button" class="lb-reaction-pill<%= info.reactedByMe ? ' reacted' : '' %>" data-emoji="<%= emoji %>"><%= emoji %><span class="count"><%= info.count %></span></button>
+              <% }
+            }) %>
+            <div class="lb-reaction-add">
+              <button type="button" class="lb-reaction-pill lb-picker-toggle">+</button>
+              <div class="lb-picker">
+                <% REACTION_EMOJIS.forEach(emoji => { %>
+                  <button type="button" data-emoji="<%= emoji %>"><%= emoji %></button>
+                <% }) %>
               </div>
             </div>
           </div>
-          <div class="leaderboard-stats">
-            <div class="stat"><span class="stat-label">Gross</span><strong style="<%= comp.format === 'gross_stroke' ? 'color:var(--color-gold)' : '' %>"><%= r.gross_total %></strong></div>
-            <div class="stat"><span class="stat-label">Course Hcp</span><strong><%= r.course_handicap %></strong></div>
-            <div class="stat"><span class="stat-label">Net</span><strong style="<%= comp.format === 'net_stroke' ? 'color:var(--color-gold)' : '' %>"><%= r.net_total %></strong></div>
-            <div class="stat"><span class="stat-label">Points</span><strong style="<%= comp.format === 'stableford' ? 'color:var(--color-gold)' : '' %>"><%= r.stableford_points %></strong></div>
-          </div>
-          <div class="reaction-row" data-round-id="<%= r.id %>">
-            <% REACTION_EMOJIS.forEach(emoji => {
-              const info = (reactionsByRound[r.id] && reactionsByRound[r.id][emoji]) || { count: 0, reactedByMe: false };
+          <div style="margin-top:6px;font-size:0.75rem;">
+            <a class="muted" href="/rounds/<%= r.id %>/scorecard">Scorecard</a>
+            <% if (currentPlayer.is_admin) { %> · <a class="muted" href="/admin/rounds/<%= r.id %>/edit">Edit</a><% } %>
+            <% if (comp.entry_fee_enabled) {
+              const entry = allEntries.find(e => e.player_id === r.player_id);
             %>
-              <button type="button" class="reaction-btn<%= info.reactedByMe ? ' reacted' : '' %>" data-emoji="<%= emoji %>">
-                <%= emoji %><% if (info.count > 0) { %><span class="reaction-count"><%= info.count %></span><% } %>
-              </button>
-            <% }) %>
+              · <span class="muted"><%= entry && entry.entry_fee_paid ? 'Paid' : 'Fee due' %></span>
+            <% } %>
           </div>
         </li>
       <% }) %>
       <% pendingEntries.forEach(e => { %>
-        <li class="leaderboard-row <%= e.player_id === currentPlayer.id ? 'me' : '' %>" style="flex-direction:column;align-items:stretch;gap:0.3rem;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
+        <li class="lb-row">
+          <div class="lb-pending-row">
             <div>
-              <strong><%= e.player_name %></strong>
-              <div class="muted" style="font-size:0.8rem;">Entered, not yet played</div>
+              <div class="lb-pending-name"><%= e.player_name %></div>
+              <div class="lb-pending-sub">Entered, not yet played</div>
             </div>
-            <% if (comp.entry_fee_enabled) { %>
-              <% if (e.entry_fee_paid) { %><span class="badge">Paid</span><% } else { %><span class="muted">–</span><% } %>
-            <% } %>
+            <span class="lb-pending-dash">&mdash;</span>
           </div>
         </li>
       <% }) %>
@@ -390,10 +560,27 @@
   <% } %>
 </div>
 
+<% if (comp.status === 'open' && hasEntered && !myRound) { %>
+  <div class="sb-primary-action">
+    <a class="sb-outline-btn" href="#scoreSetupCard">Submit a score</a>
+  </div>
+<% } %>
+
 <script>
-  document.querySelectorAll('.reaction-row').forEach((row) => {
+  document.getElementById('lbExplainerToggle').addEventListener('click', () => {
+    document.getElementById('lbExplainer').classList.toggle('open');
+  });
+
+  document.querySelectorAll('.lb-reactions').forEach((row) => {
     row.addEventListener('click', async (e) => {
-      const btn = e.target.closest('.reaction-btn');
+      const pickerToggle = e.target.closest('.lb-picker-toggle');
+      if (pickerToggle) {
+        row.querySelector('.lb-picker').classList.toggle('open');
+        return;
+      }
+      const pickerBtn = e.target.closest('.lb-picker button');
+      const pillBtn = e.target.closest('.lb-reaction-pill:not(.lb-picker-toggle)');
+      const btn = pickerBtn || pillBtn;
       if (!btn) return;
       btn.disabled = true;
       try {
@@ -404,111 +591,18 @@
         });
         const data = await res.json();
         if (!res.ok) return;
-        btn.classList.toggle('reacted', data.reactedByMe);
-        const countEl = btn.querySelector('.reaction-count');
-        if (data.count > 0) {
-          if (countEl) {
-            countEl.textContent = data.count;
-          } else {
-            const span = document.createElement('span');
-            span.className = 'reaction-count';
-            span.textContent = data.count;
-            btn.appendChild(span);
-          }
-        } else if (countEl) {
-          countEl.remove();
-        }
+        window.location.reload();
       } finally {
         btn.disabled = false;
       }
     });
   });
+
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.lb-picker.open').forEach((picker) => {
+      if (!picker.parentElement.contains(e.target)) picker.classList.remove('open');
+    });
+  });
 </script>
 
-<a class="muted" href="/dashboard">&larr; Back to all competitions</a>
-
-<% if (comp.status === 'open' && hasEntered && !myRound && selectedCourse) { %>
-  <script>
-    // Live in-page preview only — mirrors the pure-math parts of
-    // lib/scoring.js so the running total updates instantly as you tap.
-    // The server always recomputes the real result from scratch on save,
-    // so a mismatch here can only ever mislead the preview, never the score.
-    (function () {
-      const handicapIndex = <%= currentPlayer.handicap_index %>;
-      const slopeRating = <%= selectedCourse.slope_rating %>;
-      const courseRating = <%= selectedCourse.course_rating %>;
-      const coursePar = <%= selectedCourse.par %>;
-      const holesPlayed = <%= holes.length %>;
-      const fullCourseHcp = Math.round(handicapIndex * (slopeRating / 113) + (courseRating - coursePar));
-      // A genuine 9-hole round (Sprint) halves the 18-hole Course Handicap —
-      // see lib/scoring.js computeRound, which this preview mirrors.
-      const courseHcp = holesPlayed === 9 ? Math.round(fullCourseHcp / 2) : fullCourseHcp;
-
-      function strokesReceived(strokeIndex) {
-        if (courseHcp >= 0) {
-          const base = Math.floor(courseHcp / holesPlayed);
-          const extra = (courseHcp % holesPlayed) >= strokeIndex ? 1 : 0;
-          return base + extra;
-        }
-        const posHcp = Math.abs(courseHcp);
-        const base = -Math.floor(posHcp / holesPlayed);
-        const reverseIndex = holesPlayed - strokeIndex + 1;
-        const extra = (posHcp % holesPlayed) >= reverseIndex ? -1 : 0;
-        return base + extra;
-      }
-
-      function stablefordPoints(strokes, par, received) {
-        return Math.max(0, 2 - (strokes - received - par));
-      }
-
-      const rows = Array.from(document.querySelectorAll(".score-hole-row"));
-
-      function updateSummary() {
-        let holesDone = 0;
-        let gross = 0;
-        let points = 0;
-        rows.forEach((row) => {
-          const input = row.querySelector('input[type="number"]');
-          const val = parseInt(input.value, 10);
-          if (Number.isFinite(val) && val > 0) {
-            holesDone += 1;
-            gross += val;
-            const par = parseInt(row.dataset.par, 10);
-            const si = parseInt(row.dataset.si, 10);
-            points += stablefordPoints(val, par, strokesReceived(si));
-            row.classList.add('done');
-          } else {
-            row.classList.remove('done');
-          }
-        });
-        const net = gross - courseHcp;
-        document.getElementById('summary-holes').textContent = holesDone + '/' + holesPlayed;
-        document.getElementById('summary-gross-top').textContent = holesDone ? gross : '–';
-        document.getElementById('summary-points-top').textContent = holesDone ? points : '–';
-        document.getElementById('summary-gross-bottom').textContent = holesDone ? gross : '–';
-        document.getElementById('summary-net-bottom').textContent = holesDone ? net : '–';
-        document.getElementById('summary-points-bottom').textContent = holesDone ? points : '–';
-      }
-
-      document.querySelectorAll('.stepper').forEach((stepper) => {
-        const input = stepper.querySelector('input');
-        const par = parseInt(stepper.closest('.score-hole-row').dataset.par, 10);
-        stepper.querySelector('.minus').addEventListener('click', () => {
-          const cur = parseInt(input.value, 10);
-          input.value = Number.isFinite(cur) ? Math.max(1, cur - 1) : par;
-          updateSummary();
-        });
-        stepper.querySelector('.plus').addEventListener('click', () => {
-          const cur = parseInt(input.value, 10);
-          input.value = Number.isFinite(cur) ? Math.min(20, cur + 1) : par;
-          updateSummary();
-        });
-        input.addEventListener('input', updateSummary);
-      });
-
-      updateSummary();
-    })();
-  </script>
-<% } %>
-
-<%- include('partials/footer') %>
+<%- include('partials/footer', { hideTagline: true }) %>
