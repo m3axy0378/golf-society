@@ -321,7 +321,7 @@ form.stacked input:focus, form.stacked select:focus {
 /* ---- Buttons ---------------------------------------------------------
    Primary CTA: gold fill, navy text. Secondary: navy/white outline.
    Rounded but not pill-shaped, for a premium/athletic feel. */
-button, .btn {
+button, .btn, .btn-secondary, .btn-danger {
   background: var(--color-gold);
   color: var(--color-navy);
   border: none;
@@ -339,7 +339,10 @@ button, .btn {
   transition: background 180ms ease, transform 180ms ease;
 }
 button:hover, .btn:hover { background: var(--color-gold-light); }
-button:focus-visible, .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(201, 162, 74, 0.35); }
+button:focus-visible, .btn:focus-visible, .btn-secondary:focus-visible, .btn-danger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(201, 162, 74, 0.35);
+}
 
 .btn-secondary { background: transparent; color: var(--color-navy); border: 1px solid var(--color-navy); }
 .btn-secondary:hover { background: var(--color-navy); color: var(--text-primary); }
