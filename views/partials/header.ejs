@@ -27,7 +27,7 @@
   { key: 'me', href: '/profile', label: 'Me', match: (p) => p === '/profile' || p === '/stats',
     icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>' },
 ]; %>
-<body class="<%= currentPlayer ? 'has-app-nav' : '' %>">
+<body class="<%= [currentPlayer ? 'has-app-nav' : '', typeof mainClass !== 'undefined' && mainClass === 'scoreboard-view' ? 'scoreboard-page' : ''].filter(Boolean).join(' ') %>">
   <header class="topbar">
     <a class="brand" href="/dashboard">
       <img class="brand-icon" src="/img/tee-league-icon-gold.svg" alt="" width="24" height="24">
