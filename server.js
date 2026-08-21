@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const db = require('./db');
 const asyncHandler = require('./lib/asyncHandler');
 const csrf = require('./lib/csrf');
+const { MIN_ROUNDS_FOR_AUTO_HANDICAP } = require('./lib/handicap');
 
 const app = express();
 
@@ -39,6 +40,9 @@ app.locals.vapidPublicKey = null;
 app.locals.baseUrl = '';
 app.locals.pairingSheetEnabled = true;
 app.locals.csrfToken = '';
+// A fixed constant, not per-request data — set once here rather than
+// threading it through every render call across profile/handicaps/onboarding.
+app.locals.MIN_ROUNDS_FOR_AUTO_HANDICAP = MIN_ROUNDS_FOR_AUTO_HANDICAP;
 
 // Appended to /style.css's URL so every deploy gets a distinct URL instead
 // of reusing "/style.css" forever — lets the browser cache it aggressively

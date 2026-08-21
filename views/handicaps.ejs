@@ -4,9 +4,9 @@
   <h1 class="comp-title" style="text-transform:none;font-size:1.75rem;">Players Handicap</h1>
   <p class="comp-meta">
     Each Handicap Index is the average of the best 4 Score Differentials from a player's last 8 rounds (real-world
-    handicapping uses best 8 of last 20). With fewer than 8 rounds, roughly the best half count instead. A new
-    player's Handicap Index starts as whatever was entered for them and switches to fully automatic from their
-    first submitted round.
+    handicapping uses best 8 of last 20). A new player's Handicap Index starts as whatever was entered for them and
+    doesn't move until they've played <%= MIN_ROUNDS_FOR_AUTO_HANDICAP %> rounds — a single round shouldn't be able
+    to swing it. From then on it's fully automatic.
   </p>
 </div>
 
@@ -21,6 +21,9 @@
           <div class="hcp-basis">
             <% if (h.roundsCounted === 0) { %>
               Starting handicap &mdash; no rounds submitted yet
+            <% } else if (h.roundsCounted < MIN_ROUNDS_FOR_AUTO_HANDICAP) { %>
+              Starting handicap &mdash; <%= h.roundsCounted %> round<%= h.roundsCounted === 1 ? '' : 's' %> so far,
+              <%= MIN_ROUNDS_FOR_AUTO_HANDICAP - h.roundsCounted %> more to go automatic
             <% } else { %>
               Best <%= h.bestCount %> of last <%= h.roundsCounted %> round<%= h.roundsCounted === 1 ? '' : 's' %>
             <% } %>
@@ -47,7 +50,8 @@
   </div>
   <% if (currentPlayer.is_admin) { %>
     <p class="muted" style="font-size:0.8rem;margin:0.75rem 20px 0;">
-      Edits here only hold until the player's next round, since it's recalculated automatically after every one.
+      Edits here hold until a player reaches <%= MIN_ROUNDS_FOR_AUTO_HANDICAP %> rounds, then it's recalculated
+      automatically after every one from then on.
     </p>
   <% } %>
 <% } %>

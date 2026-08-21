@@ -45,10 +45,16 @@
       <button type="submit">Update</button>
     </form>
     <p class="muted" style="font-size:0.85rem;">
-      This is used until your first submitted round — after that, your Handicap Index is calculated
-      automatically from your scores (best 4 of your last 8 rounds), same as real-world handicapping.
+      This is used until you've played <%= MIN_ROUNDS_FOR_AUTO_HANDICAP %> rounds — after that, your Handicap Index
+      is calculated automatically from your scores (best 4 of your last 8 rounds), same as real-world handicapping.
     </p>
   </div>
+<% } else if (roundsPlayed < MIN_ROUNDS_FOR_AUTO_HANDICAP) { %>
+  <p class="muted" style="font-size:0.85rem;margin:0 20px;">
+    Still your starting Handicap Index — it switches to automatic once you've played
+    <%= MIN_ROUNDS_FOR_AUTO_HANDICAP - roundsPlayed %> more round<%= (MIN_ROUNDS_FOR_AUTO_HANDICAP - roundsPlayed) === 1 ? '' : 's' %>
+    (best 4 of your last 8).
+  </p>
 <% } else { %>
   <p class="muted" style="font-size:0.85rem;margin:0 20px;">
     Calculated automatically from the best 4 of your last 8 rounds, and updates after every round you submit.

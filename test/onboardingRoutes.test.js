@@ -38,6 +38,7 @@ async function startTestApp(currentPlayer) {
     res.locals.pairingSheetEnabled = true;
     res.locals.currentPath = req.path;
     res.locals.csrfToken = 'test-csrf-token';
+    res.locals.MIN_ROUNDS_FOR_AUTO_HANDICAP = 4;
     next();
   });
   app.use('/', onboardingRouter);

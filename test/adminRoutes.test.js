@@ -71,7 +71,12 @@ test('bulk-clear-scores deletes rounds/entries for the given ids and recalculate
   const app = await startTestApp();
   t.after(() => app.close());
 
-  const roundsForPlayer = { 1: [{ gross_total: 90, course_rating: 70, slope_rating: 113 }], 2: [] };
+  // Player 1 needs at least MIN_ROUNDS_FOR_AUTO_HANDICAP (4) rounds left for
+  // updatePlayerHandicap to actually touch their Handicap Index at all.
+  const roundsForPlayer = {
+    1: [80, 82, 84, 86].map((gross_total) => ({ gross_total, course_rating: 70, slope_rating: 113 })),
+    2: [],
+  };
   const clientQuery = makeQueryMock([
     { match: 'SELECT DISTINCT player_id FROM rounds WHERE competition_id = ANY', result: { rows: [{ player_id: 1 }, { player_id: 2 }] } },
     { match: 'DELETE FROM rounds WHERE competition_id = ANY', result: { rows: [] } },
@@ -92,12 +97,17 @@ test('bulk-clear-scores deletes rounds/entries for the given ids and recalculate
   assert.ok(clientQuery.calls.some((c) => c.text.includes('DELETE FROM rounds') && c.params[0].length === 2));
   assert.ok(clientQuery.calls.some((c) => c.text.includes('DELETE FROM entries')));
 
-  // Player 1 still has a round, so their handicap gets recalculated from it;
-  // player 2 has nothing left, so updatePlayerHandicap must leave them alone
-  // rather than reverting/zeroing their Handicap Index.
+  // Player 1 still has 4 rounds left (enough to be automatic), so their
+  // handicap gets recalculated from them; player 2 has nothing left, so
+  // updatePlayerHandicap must leave them alone rather than reverting/zeroing
+  // their Handicap Index.
   const updates = clientQuery.calls.filter((c) => c.text.includes('UPDATE players SET handicap_index'));
   assert.equal(updates.length, 1);
-  const expectedIndex = recalculateHandicapIndex([{ grossTotal: 90, courseRating: 70, slopeRating: 113 }]);
+  const expectedIndex = recalculateHandicapIndex(roundsForPlayer[1].map((r) => ({
+    grossTotal: r.gross_total,
+    courseRating: r.course_rating,
+    slopeRating: r.slope_rating,
+  })));
   assert.deepEqual(updates[0].params, [expectedIndex, 1]);
 });
 
@@ -110,7 +120,11 @@ test('bulk-delete with { all: true } resolves every competition and still recalc
   const clientQuery = makeQueryMock([
     { match: 'SELECT DISTINCT player_id FROM rounds WHERE competition_id = ANY', result: { rows: [{ player_id: 3 }] } },
     { match: 'DELETE FROM competitions WHERE id = ANY', result: { rows: [] } },
-    { match: 'SELECT r.gross_total, co.course_rating, co.slope_rating', result: { rows: [{ gross_total: 84, course_rating: 71, slope_rating: 120 }] } },
+    // 4 rounds left — enough to still be past MIN_ROUNDS_FOR_AUTO_HANDICAP.
+    {
+      match: 'SELECT r.gross_total, co.course_rating, co.slope_rating',
+      result: { rows: [84, 86, 88, 90].map((gross_total) => ({ gross_total, course_rating: 71, slope_rating: 120 })) },
+    },
     { match: 'UPDATE players SET handicap_index', result: { rows: [] } },
   ]);
   t.mock.method(db, 'withTransaction', async (fn) => fn({ query: clientQuery }));

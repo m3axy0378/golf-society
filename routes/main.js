@@ -4,7 +4,7 @@ const asyncHandler = require('../lib/asyncHandler');
 const { requireLogin } = require('../lib/authMiddleware');
 const { computeRound, strokesReceivedOnHole, stablefordPointsForHole } = require('../lib/scoring');
 const { getWeatherForCourse } = require('../lib/courseWeather');
-const { bestCountFor, updatePlayerHandicap } = require('../lib/handicap');
+const { bestCountFor, updatePlayerHandicap, MIN_ROUNDS_FOR_AUTO_HANDICAP } = require('../lib/handicap');
 const { computeSeasonStandings, rankCompetition, metricForFormat } = require('../lib/standings');
 const ukGolfApi = require('../lib/ukGolfApi');
 
@@ -828,9 +828,11 @@ router.get(
         const recent = recentByPlayer.get(p.id) || [];
         // Trend = current handicap vs. what it was going into their most
         // recent round (handicap_index_used is the value before that round's
-        // result got folded into the rolling average).
+        // result got folded into the rolling average). Only meaningful once
+        // a player has enough rounds to be automatic at all — below that,
+        // handicap_index never moves, so there's nothing to show a trend on.
         let trend = null;
-        if (recent.length > 0) {
+        if (recent.length >= MIN_ROUNDS_FOR_AUTO_HANDICAP) {
           if (p.handicap_index < recent[0].handicap_index_used) trend = 'down';
           else if (p.handicap_index > recent[0].handicap_index_used) trend = 'up';
           else trend = 'flat';
@@ -840,7 +842,7 @@ router.get(
           player_name: p.name,
           handicap_index: p.handicap_index,
           roundsCounted: recent.length,
-          bestCount: recent.length > 0 ? bestCountFor(recent.length) : 0,
+          bestCount: bestCountFor(recent.length),
           trend,
         };
       })
