@@ -13,9 +13,19 @@
   <% if (standings.length === 0) { %>
     <div class="sb-empty" style="padding-left:0;padding-right:0;">NO RESULTS YET</div>
   <% } else { %>
-    <ul class="lb-list">
+    <% if (standings.length > 8) { %>
+      <input
+        type="text"
+        id="season-search"
+        class="season-search"
+        placeholder="Search players&hellip;"
+        autocomplete="off"
+        aria-label="Search players"
+      >
+    <% } %>
+    <ul class="lb-list" id="season-list">
       <% standings.forEach((s, i) => { %>
-        <li class="lb-row <%= i === 0 ? 'lb-row--leader' : '' %>">
+        <li class="lb-row <%= i === 0 ? 'lb-row--leader' : '' %>" data-search="<%= s.player_name.toLowerCase() %>">
           <div class="lb-main-row">
             <div class="lb-rank-diamond"><span><%= i + 1 %></span></div>
             <div class="lb-name-block">
@@ -30,7 +40,29 @@
         </li>
       <% }) %>
     </ul>
+    <div class="sb-empty" id="season-no-match" style="padding-left:0;padding-right:0;display:none;">NO PLAYERS MATCH YOUR SEARCH</div>
   <% } %>
 </div>
+
+<% if (standings.length > 8) { %>
+  <script>
+    (function () {
+      const input = document.getElementById('season-search');
+      const rows = Array.from(document.querySelectorAll('#season-list .lb-row'));
+      const noMatch = document.getElementById('season-no-match');
+
+      input.addEventListener('input', function () {
+        const term = input.value.trim().toLowerCase();
+        let visibleCount = 0;
+        rows.forEach(function (row) {
+          const matches = row.dataset.search.includes(term);
+          row.style.display = matches ? '' : 'none';
+          if (matches) visibleCount += 1;
+        });
+        noMatch.style.display = visibleCount === 0 ? '' : 'none';
+      });
+    })();
+  </script>
+<% } %>
 
 <%- include('partials/footer') %>
