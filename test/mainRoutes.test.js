@@ -219,7 +219,9 @@ test('POST /profile rejects a self-edit once handicap_locked is set, even with z
   });
   assert.equal(res.status, 200);
   const html = await res.text();
-  assert.match(html, /can't be edited by hand/);
+  // EJS's <%= %> HTML-escapes the message, turning the apostrophe in "can't"
+  // into &#39; — match around it rather than the literal contraction.
+  assert.match(html, /calculated automatically now and can.t be edited by hand/);
 
   // The whole point of handicap_locked: this must reject before ever
   // reaching the UPDATE, regardless of roundsPlayed being 0.
