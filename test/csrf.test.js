@@ -46,7 +46,10 @@ test('a token issued on a GET is accepted on a real subsequent POST in the same 
   t.after(() => app.close());
 
   const getRes = await fetch(`${app.baseUrl}/form`);
-  const cookie = getRes.headers.get('set-cookie').split(';')[0];
+  // Headers.get('set-cookie') is unreliable by design (the Fetch spec
+  // forbids combining multiple Set-Cookie values into one string) —
+  // getSetCookie() is the API meant for reading it back out.
+  const cookie = getRes.headers.getSetCookie()[0].split(';')[0];
   const { csrfToken } = await getRes.json();
   assert.match(csrfToken, /^[0-9a-f]{64}$/);
 
