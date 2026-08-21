@@ -92,6 +92,7 @@ test('/dashboard lists a competition by format only, not its course names', asyn
     { match: 'FROM entries WHERE player_id', result: { rows: [] } },
     { match: "type != 'sprint'", result: { rows: [] } },
     { match: 'FROM rounds r JOIN players p ON p.id = r.player_id', result: { rows: [] } },
+    { match: 'FROM players WHERE is_test_user', result: { rows: [{ id: 1, name: 'Test Player', handicap_index: 18.4 }] } },
   ]);
   t.mock.method(db, 'query', queryMock);
 
@@ -107,6 +108,42 @@ test('/dashboard lists a competition by format only, not its course names', asyn
   // you've clicked into the competition itself.
   const compQuery = queryMock.calls.find((c) => c.text.includes('rounds_count'));
   assert.ok(!compQuery.text.includes('course_names'));
+});
+
+test('dashboard Order of Merit widget shows a not-yet-played player on the board, not the old "join" prompt', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      { match: 'rounds_count', result: { rows: [] } },
+      { match: 'FROM entries WHERE player_id', result: { rows: [] } },
+      { match: "type != 'sprint'", result: { rows: [] } },
+      { match: 'FROM rounds r JOIN players p ON p.id = r.player_id', result: { rows: [] } },
+      {
+        match: 'FROM players WHERE is_test_user',
+        result: {
+          rows: [
+            { id: 1, name: 'Test Player', handicap_index: 18.4 },
+            { id: 2, name: 'Other Player', handicap_index: 12.0 },
+          ],
+        },
+      },
+    ])
+  );
+
+  const res = await fetch(`${app.baseUrl}/dashboard`);
+  assert.equal(res.status, 200);
+  const html = await res.text();
+
+  // The widget must now match /season: every registered player shows up
+  // from the moment they sign up, so a player with zero rounds still gets a
+  // rank instead of the old "play a competition to join" empty state.
+  assert.match(html, /oom-points">0 PTS/);
+  assert.match(html, /Play a competition to get on the board/);
+  assert.doesNotMatch(html, /join the Order of Merit/);
 });
 
 test('every page footer shows the tagline in full, with "Compete" in the gold accent', async (t) => {

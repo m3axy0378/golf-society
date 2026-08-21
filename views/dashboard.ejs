@@ -21,7 +21,9 @@
       <div class="oom-spacer"></div>
       <div class="oom-side">
         <div class="oom-points"><%= oom.points %> PTS</div>
-        <% if (oom.rank === 1) { %>
+        <% if (oom.played === 0) { %>
+          <div class="oom-gap">Play a competition to get on the board</div>
+        <% } else if (oom.rank === 1) { %>
           <div class="oom-gap">Leading the season</div>
         <% } else { %>
           <div class="oom-gap"><%= oom.gapToLeader %> behind leader</div>

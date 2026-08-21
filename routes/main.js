@@ -140,7 +140,32 @@ async function getSeasonStandings() {
      WHERE p.is_test_user = FALSE`
   );
   const allRounds = await attachHoleData(allRoundsRaw);
-  return { competitions, standings: computeSeasonStandings(competitions, allRounds) };
+  const standings = computeSeasonStandings(competitions, allRounds);
+
+  // computeSeasonStandings only produces an entry for players who've
+  // actually submitted a round, so anyone registered but yet to play is
+  // otherwise invisible here — both on the Season table and in the
+  // dashboard's Order of Merit widget. Fill in the rest of the
+  // (non-test-user) roster at 0 points / 0 competitions so every member
+  // shows up from the moment they sign up.
+  const { rows: allPlayers } = await db.query('SELECT id, name, handicap_index FROM players WHERE is_test_user = FALSE');
+  const playersById = new Map(allPlayers.map((p) => [p.id, p]));
+  const seenIds = new Set(standings.map((s) => s.player_id));
+  for (const p of allPlayers) {
+    if (!seenIds.has(p.id)) {
+      standings.push({ player_id: p.id, player_name: p.name, totalPoints: 0, competitionsPlayed: 0 });
+    }
+  }
+  // computeSeasonStandings doesn't carry handicap_index (it only ever reads
+  // the rounds/competitions tables), so it's attached here from the roster
+  // query above instead, covering both real entries and the zero ones just
+  // added.
+  for (const s of standings) {
+    s.handicapIndex = playersById.get(s.player_id)?.handicap_index ?? null;
+  }
+  standings.sort((a, b) => b.totalPoints - a.totalPoints || a.player_name.localeCompare(b.player_name));
+
+  return { competitions, standings };
 }
 
 router.get(
@@ -180,6 +205,7 @@ router.get(
             suffix: ordinalSuffix(myIndex + 1),
             totalPlayers: standings.length,
             points: Math.round(standings[myIndex].totalPoints * 10) / 10,
+            played: standings[myIndex].competitionsPlayed,
             gapToLeader: myIndex === 0 ? 0 : Math.round((standings[0].totalPoints - standings[myIndex].totalPoints) * 10) / 10,
           };
 
@@ -640,29 +666,6 @@ router.get(
   requireLogin,
   asyncHandler(async (req, res) => {
     const { competitions, standings } = await getSeasonStandings();
-
-    // computeSeasonStandings only produces an entry for players who've
-    // actually submitted a round, so anyone registered but yet to play is
-    // otherwise invisible here. Fill in the rest of the (non-test-user)
-    // roster at 0 points / 0 competitions so every member shows up from the
-    // moment they sign up, not just once they've played something.
-    const { rows: allPlayers } = await db.query('SELECT id, name, handicap_index FROM players WHERE is_test_user = FALSE');
-    const playersById = new Map(allPlayers.map((p) => [p.id, p]));
-    const seenIds = new Set(standings.map((s) => s.player_id));
-    for (const p of allPlayers) {
-      if (!seenIds.has(p.id)) {
-        standings.push({ player_id: p.id, player_name: p.name, totalPoints: 0, competitionsPlayed: 0 });
-      }
-    }
-    // computeSeasonStandings doesn't carry handicap_index (it only ever reads
-    // the rounds/competitions tables), so it's attached here from the roster
-    // query above instead, covering both real entries and the zero ones just
-    // added.
-    for (const s of standings) {
-      s.handicapIndex = playersById.get(s.player_id)?.handicap_index ?? null;
-    }
-    standings.sort((a, b) => b.totalPoints - a.totalPoints || a.player_name.localeCompare(b.player_name));
-
     res.render('season', { standings, competitionsCount: competitions.length });
   })
 );
