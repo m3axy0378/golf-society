@@ -198,7 +198,7 @@ test('season standings include every registered player, even with zero competiti
   assert.match(html, /Played Once/);
   assert.match(html, /Zulu Newcomer/);
   assert.match(html, /Alpha Newcomer/);
-  assert.match(html, /0 competitions played/);
+  assert.match(html, /stat-label">Played<\/span><strong>0<\/strong>/);
 
   // Zero-point players (never played, tied at 0) are ordered alphabetically
   // after anyone who's actually scored points.

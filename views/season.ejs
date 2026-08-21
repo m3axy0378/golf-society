@@ -20,10 +20,10 @@
             <div class="lb-rank-diamond"><span><%= i + 1 %></span></div>
             <div class="lb-name-block">
               <div class="lb-name"><%= s.player_name %><%= s.player_id === currentPlayer.id ? ' (you)' : '' %></div>
-              <div class="lb-sub"><%= s.competitionsPlayed %> competition<%= s.competitionsPlayed === 1 ? '' : 's' %> played</div>
             </div>
-            <div class="lb-score-block">
-              <div class="lb-score"><%= s.totalPoints %></div>
+            <div class="leaderboard-stats" style="flex-wrap:nowrap;gap:1.25rem;">
+              <div class="stat"><span class="stat-label">Played</span><strong><%= s.competitionsPlayed %></strong></div>
+              <div class="stat"><span class="stat-label">Points</span><strong<%= i === 0 ? ' style="color:var(--color-gold);"' : '' %>><%= s.totalPoints %></strong></div>
             </div>
           </div>
         </li>
