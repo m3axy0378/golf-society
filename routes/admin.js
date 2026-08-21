@@ -17,7 +17,11 @@ router.get(
   '/players',
   asyncHandler(async (req, res) => {
     const { rows: players } = await db.query('SELECT * FROM players ORDER BY name');
-    res.render('admin/players', { players, error: null, message: req.query.added ? 'Player added.' : null });
+    let message = null;
+    if (req.query.added) message = 'Player added.';
+    else if (req.query.updated) message = 'Player details updated.';
+    else if (req.query.passwordReset) message = 'Password updated.';
+    res.render('admin/players', { players, error: null, message });
   })
 );
 
@@ -44,6 +48,53 @@ router.post(
       }
       throw e;
     }
+  })
+);
+
+router.post(
+  '/players/:id/edit',
+  asyncHandler(async (req, res) => {
+    const { name, email } = req.body;
+    const { rows: players } = await db.query('SELECT * FROM players ORDER BY name');
+
+    if (!name || !email) {
+      return res.render('admin/players', { players, error: 'Name and email are both required.', message: null });
+    }
+
+    try {
+      await db.query('UPDATE players SET name = $1, email = $2 WHERE id = $3', [name.trim(), email.trim().toLowerCase(), req.params.id]);
+      res.redirect('/admin/players?updated=1');
+    } catch (e) {
+      if (e.code === '23505') {
+        return res.render('admin/players', { players, error: 'That email is already registered to another player.', message: null });
+      }
+      throw e;
+    }
+  })
+);
+
+// A player locked out of their own account can normally self-serve via
+// /forgot-password, but that only works if the email on file is correct and
+// reachable — this is the fallback for when it isn't (a typo at signup, or
+// an inbox they've lost access to). Also clears any pending self-service
+// reset token, the same way routes/auth.js's own reset flow does, so a stale
+// email link can't undo the password an admin just set here.
+router.post(
+  '/players/:id/reset-password',
+  asyncHandler(async (req, res) => {
+    const { password } = req.body;
+    const { rows: players } = await db.query('SELECT * FROM players ORDER BY name');
+
+    if (!password || password.length < 8) {
+      return res.render('admin/players', { players, error: 'New password must be at least 8 characters.', message: null });
+    }
+
+    const hash = bcrypt.hashSync(password, 10);
+    await db.query(
+      'UPDATE players SET password_hash = $1, password_reset_token_hash = NULL, password_reset_expires_at = NULL WHERE id = $2',
+      [hash, req.params.id]
+    );
+    res.redirect('/admin/players?passwordReset=1');
   })
 );
 

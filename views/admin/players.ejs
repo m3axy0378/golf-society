@@ -17,11 +17,19 @@
     <% players.forEach(p => { %>
       <li style="flex-direction:column;align-items:stretch;gap:0.6rem;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem;">
-          <div>
-            <strong><%= p.name %></strong>
-            <% if (p.is_admin) { %><span class="badge admin">Admin</span><% } %>
-            <% if (p.is_test_user) { %><span class="badge test">Test user</span><% } %>
-            <div class="muted" style="font-size:0.85rem;margin-top:0.15rem;"><%= p.email %></div>
+          <div style="flex:1;min-width:260px;">
+            <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/edit" style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="text" name="name" value="<%= p.name %>" required
+                style="min-width:120px;flex:1;padding:0.25rem 0.4rem;border:1px solid var(--sb-border);border-radius:6px;font-weight:700;">
+              <input type="email" name="email" value="<%= p.email %>" required
+                style="min-width:180px;flex:1;padding:0.25rem 0.4rem;border:1px solid var(--sb-border);border-radius:6px;">
+              <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Save</button>
+            </form>
+            <div style="margin-top:0.3rem;">
+              <% if (p.is_admin) { %><span class="badge admin">Admin</span><% } %>
+              <% if (p.is_test_user) { %><span class="badge test">Test user</span><% } %>
+            </div>
           </div>
           <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/handicap" style="display:flex;align-items:center;gap:0.4rem;">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -30,6 +38,13 @@
             <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Save</button>
           </form>
         </div>
+        <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/reset-password" style="display:flex;align-items:center;gap:0.4rem;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <label class="muted" style="font-size:0.8rem;" for="pw-<%= p.id %>">New password</label>
+          <input id="pw-<%= p.id %>" type="password" name="password" minlength="8" placeholder="At least 8 characters"
+            style="width:170px;padding:0.25rem 0.4rem;border:1px solid var(--sb-border);border-radius:6px;">
+          <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Set password</button>
+        </form>
         <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
           <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/toggle-admin">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">

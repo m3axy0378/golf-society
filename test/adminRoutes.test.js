@@ -258,3 +258,68 @@ test('pairing-sheet routes are blocked while the feature is turned off', async (
   assert.equal(res.status, 404);
   assert.deepEqual(await res.json(), { error: 'Pairing sheets are turned off.' });
 });
+
+test('editing a player updates name and email and redirects back with a confirmation flag', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const queryMock = makeQueryMock([{ match: 'UPDATE players SET name', result: { rows: [] } }]);
+  t.mock.method(db, 'query', queryMock);
+
+  const res = await fetch(`${app.baseUrl}/admin/players/7/edit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'name=Corrected+Name&email=Fixed%40Example.com',
+    redirect: 'manual',
+  });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), '/admin/players?updated=1');
+
+  const updateCall = queryMock.calls.find((c) => c.text.includes('UPDATE players SET name'));
+  // Email is lower-cased and trimmed the same way signup/admin-create already do.
+  assert.deepEqual(updateCall.params, ['Corrected Name', 'fixed@example.com', '7']);
+});
+
+test('resetting a player\'s password hashes it and clears any pending self-service reset token', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const queryMock = makeQueryMock([{ match: 'UPDATE players SET password_hash', result: { rows: [] } }]);
+  t.mock.method(db, 'query', queryMock);
+
+  const res = await fetch(`${app.baseUrl}/admin/players/7/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'password=a-brand-new-password',
+    redirect: 'manual',
+  });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), '/admin/players?passwordReset=1');
+
+  const updateCall = queryMock.calls.find((c) => c.text.includes('UPDATE players SET password_hash'));
+  assert.ok(updateCall.text.includes('password_reset_token_hash = NULL'));
+  assert.ok(updateCall.text.includes('password_reset_expires_at = NULL'));
+  // The stored value must be a bcrypt hash, never the plaintext password.
+  assert.notEqual(updateCall.params[0], 'a-brand-new-password');
+  assert.match(updateCall.params[0], /^\$2[aby]\$/);
+  assert.equal(updateCall.params[1], '7');
+});
+
+test('resetting a player\'s password rejects anything under 8 characters, without updating it', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const queryMock = makeQueryMock([{ match: 'SELECT * FROM players ORDER BY name', result: { rows: [] } }]);
+  t.mock.method(db, 'query', queryMock);
+
+  await fetch(`${app.baseUrl}/admin/players/7/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'password=short',
+    redirect: 'manual',
+  });
+  // No view engine is set up in this test harness (see file header), so the
+  // validation-failure render doesn't produce a real response body here —
+  // the meaningful assertion is that it never reached the UPDATE.
+  assert.ok(!queryMock.calls.some((c) => c.text.includes('UPDATE players SET password_hash')));
+});
