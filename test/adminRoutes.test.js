@@ -348,7 +348,7 @@ test('editing a competition updates its details and adds/removes courses to matc
   );
 
   const clientQuery = makeQueryMock([
-    { match: 'UPDATE competitions SET name', result: { rows: [] } },
+    { match: 'UPDATE competitions', result: { rows: [] } },
     { match: 'INSERT INTO competition_courses', result: { rows: [] } },
     { match: 'DELETE FROM competition_courses', result: { rows: [] } },
   ]);
@@ -364,7 +364,7 @@ test('editing a competition updates its details and adds/removes courses to matc
   assert.equal(res.status, 302);
   assert.equal(res.headers.get('location'), '/admin/competitions?updated=1');
 
-  const updateCall = clientQuery.calls.find((c) => c.text.includes('UPDATE competitions SET name'));
+  const updateCall = clientQuery.calls.find((c) => c.text.includes('UPDATE competitions'));
   assert.deepEqual(updateCall.params, ['New Name', '2026-09-01', 'stableford', 'major', false, null, null, '9']);
 
   const inserted = clientQuery.calls.filter((c) => c.text.includes('INSERT INTO competition_courses')).map((c) => c.params[1]);
