@@ -1,0 +1,80 @@
+<%- include('../partials/header', { title: 'Edit competition', mainClass: 'scoreboard-view' }) %>
+
+<h1 style="margin:0.75rem 20px 0;">Edit competition</h1>
+<% if (error) { %><div class="error-box" style="margin:0.75rem 20px;"><%= error %></div><% } %>
+
+<div class="card" style="max-width:520px;">
+  <form class="stacked" method="POST" action="/admin/competitions/<%= comp.id %>/edit">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Competition name <input type="text" name="name" value="<%= comp.name %>" required></label>
+    <label>Date to be played by
+      <input type="date" name="compDate" value="<%= new Date(comp.comp_date).toISOString().slice(0, 10) %>" required>
+    </label>
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:0.92rem;margin-bottom:0.3rem;">Course(s)</div>
+      <p class="muted" style="font-size:0.82rem;margin:0 0 0.5rem;">
+        Choose one, or several if different groups are playing different courses in this same competition.
+      </p>
+      <% courses.forEach(c => { %>
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem;">
+          <input type="checkbox" name="courseIds" value="<%= c.id %>" style="width:auto;margin:0;" <%= assignedCourseIds.includes(c.id) ? 'checked' : '' %>>
+          <%= c.name %> (<%= c.tee_name %> tees, par <%= c.par %>)
+        </label>
+      <% }) %>
+    </div>
+    <label>Scoring format
+      <% if (comp.rounds_count > 0) { %>
+        <input type="hidden" name="format" value="<%= comp.format %>">
+        <input type="text" value="<%= FORMAT_LABELS[comp.format] %>" disabled style="background:var(--sb-card);">
+        <span class="muted" style="font-size:0.8rem;display:block;margin-top:0.25rem;">
+          Can't be changed — <%= comp.rounds_count %> round<%= comp.rounds_count === 1 ? '' : 's' %> already submitted under this format.
+        </span>
+      <% } else { %>
+        <select name="format" required>
+          <option value="stableford" <%= comp.format === 'stableford' ? 'selected' : '' %>>Stableford</option>
+          <option value="net_stroke" <%= comp.format === 'net_stroke' ? 'selected' : '' %>>Stroke play (net)</option>
+          <option value="gross_stroke" <%= comp.format === 'gross_stroke' ? 'selected' : '' %>>Stroke play (gross)</option>
+        </select>
+      <% } %>
+    </label>
+    <label>Competition type
+      <select name="type" required>
+        <option value="league" <%= comp.type === 'league' ? 'selected' : '' %>>League — normal season points</option>
+        <option value="major" <%= comp.type === 'major' ? 'selected' : '' %>>Major — double season points</option>
+        <option value="sprint" <%= comp.type === 'sprint' ? 'selected' : '' %>>9 Hole Sprint — casual, doesn't count towards handicap or season</option>
+      </select>
+    </label>
+
+    <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+      <input type="checkbox" name="entryFeeEnabled" id="entry-fee-toggle" style="width:auto;margin:0;" <%= comp.entry_fee_enabled ? 'checked' : '' %>>
+      Charge an entry fee for this competition
+    </label>
+    <div id="entry-fee-fields" style="<%= comp.entry_fee_enabled ? '' : 'display:none;' %>margin-bottom:1rem;">
+      <div class="grid-2">
+        <label>Amount (£) <input type="number" step="0.01" min="0.01" name="entryFeeAmount" value="<%= comp.entry_fee_amount || '' %>" <%= comp.entry_fee_enabled ? 'required' : '' %>></label>
+        <label>Payment link <input type="url" name="entryFeeLink" value="<%= comp.entry_fee_link || '' %>" <%= comp.entry_fee_enabled ? 'required' : '' %>></label>
+      </div>
+      <p class="muted" style="font-size:0.82rem;margin:0;">
+        Set this up yourself first (PayPal.me, a Stripe Payment Link, etc.) — the app just links players to it,
+        it doesn't collect payment.
+      </p>
+    </div>
+
+    <button type="submit">Save changes</button>
+  </form>
+</div>
+
+<script>
+  const feeToggle = document.getElementById('entry-fee-toggle');
+  if (feeToggle) {
+    const feeFields = document.getElementById('entry-fee-fields');
+    feeToggle.addEventListener('change', () => {
+      feeFields.style.display = feeToggle.checked ? '' : 'none';
+      feeFields.querySelectorAll('input').forEach((inp) => { inp.required = feeToggle.checked; });
+    });
+  }
+</script>
+
+<p style="margin:0.75rem 20px;"><a class="sb-link" href="/admin/competitions">&larr; Back to competitions</a></p>
+
+<%- include('../partials/footer') %>

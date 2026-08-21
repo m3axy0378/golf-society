@@ -329,3 +329,76 @@ test('resetting a player\'s password rejects anything under 8 characters, withou
   // the meaningful assertion is that it never reached the UPDATE.
   assert.ok(!queryMock.calls.some((c) => c.text.includes('UPDATE players SET password_hash')));
 });
+
+test('editing a competition updates its details and adds/removes courses to match the new selection', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      {
+        match: 'FROM competitions c WHERE c.id = $1',
+        result: { rows: [{ id: 9, name: 'Old Name', format: 'stableford', type: 'league', rounds_count: 0 }] },
+      },
+      { match: 'FROM courses ORDER BY name', result: { rows: [{ id: 1 }, { id: 2 }, { id: 3 }] } },
+      { match: 'FROM competition_courses WHERE competition_id = $1', result: { rows: [{ course_id: 1 }, { course_id: 2 }] } },
+    ])
+  );
+
+  const clientQuery = makeQueryMock([
+    { match: 'UPDATE competitions SET name', result: { rows: [] } },
+    { match: 'INSERT INTO competition_courses', result: { rows: [] } },
+    { match: 'DELETE FROM competition_courses', result: { rows: [] } },
+  ]);
+  t.mock.method(db, 'withTransaction', async (fn) => fn({ query: clientQuery }));
+
+  // Keeps course 1, drops course 2, adds course 3.
+  const res = await fetch(`${app.baseUrl}/admin/competitions/9/edit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'name=New+Name&compDate=2026-09-01&format=stableford&type=major&courseIds=1&courseIds=3',
+    redirect: 'manual',
+  });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), '/admin/competitions?updated=1');
+
+  const updateCall = clientQuery.calls.find((c) => c.text.includes('UPDATE competitions SET name'));
+  assert.deepEqual(updateCall.params, ['New Name', '2026-09-01', 'stableford', 'major', false, null, null, '9']);
+
+  const inserted = clientQuery.calls.filter((c) => c.text.includes('INSERT INTO competition_courses')).map((c) => c.params[1]);
+  const deleted = clientQuery.calls.filter((c) => c.text.includes('DELETE FROM competition_courses')).map((c) => c.params[1]);
+  assert.deepEqual(inserted, [3]);
+  assert.deepEqual(deleted, [2]);
+});
+
+test("editing a competition rejects a format change once a round has been submitted, without touching the database", async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      {
+        match: 'FROM competitions c WHERE c.id = $1',
+        result: { rows: [{ id: 9, name: 'Old Name', format: 'stableford', type: 'league', rounds_count: 3 }] },
+      },
+      { match: 'FROM courses ORDER BY name', result: { rows: [{ id: 1 }] } },
+      { match: 'FROM competition_courses WHERE competition_id = $1', result: { rows: [{ course_id: 1 }] } },
+    ])
+  );
+  const withTransactionMock = t.mock.method(db, 'withTransaction', async () => {
+    throw new Error('should not start a transaction when validation fails');
+  });
+
+  const res = await fetch(`${app.baseUrl}/admin/competitions/9/edit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'name=Old+Name&compDate=2026-09-01&format=net_stroke&type=league&courseIds=1',
+    redirect: 'manual',
+  });
+  assert.equal(withTransactionMock.mock.calls.length, 0);
+  assert.notEqual(res.status, 302);
+});

@@ -12,6 +12,8 @@
   <a class="btn" href="/admin/competitions/new">+ New competition</a>
 </div>
 
+<% if (message) { %><div class="success-box" style="margin:0 0 0.75rem;"><%= message %></div><% } %>
+
 <div class="card">
   <% if (competitions.length === 0) { %>
     <p class="muted">No competitions yet.</p>
@@ -37,6 +39,7 @@
             <span class="badge <%= c.status === 'closed' ? 'closed' : '' %>"><%= c.status === 'open' ? 'Open' : 'Closed' %></span>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+            <a class="btn btn-secondary" style="padding:0.25rem 0.6rem;" href="/admin/competitions/<%= c.id %>/edit">Edit</a>
             <% if (pairingSheetEnabled) { %><a class="btn btn-secondary" style="padding:0.25rem 0.6rem;" href="/admin/competitions/<%= c.id %>/pairings">Pairings</a><% } %>
             <form class="inline-form" method="POST" action="/admin/competitions/<%= c.id %>/notify"
               onsubmit="return confirm('Send a push notification about &quot;<%= c.name %>&quot; to every player who has notifications enabled?');">

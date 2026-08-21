@@ -394,7 +394,7 @@ router.get(
        FROM competitions c
        ORDER BY c.comp_date DESC`
     );
-    res.render('admin/competitions', { competitions, FORMAT_LABELS, TYPE_LABELS });
+    res.render('admin/competitions', { competitions, FORMAT_LABELS, TYPE_LABELS, message: req.query.updated ? 'Competition updated.' : null });
   })
 );
 
@@ -450,6 +450,96 @@ router.post(
     await notifyCompetition({ id: compId, name: name.trim(), comp_date: compDate });
 
     res.redirect('/dashboard');
+  })
+);
+
+router.get(
+  '/competitions/:id/edit',
+  asyncHandler(async (req, res) => {
+    const { rows: compRows } = await db.query(
+      `SELECT c.*, (SELECT COUNT(*) FROM rounds r WHERE r.competition_id = c.id) AS rounds_count
+       FROM competitions c WHERE c.id = $1`,
+      [req.params.id]
+    );
+    const comp = compRows[0];
+    if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
+
+    const { rows: courses } = await db.query('SELECT * FROM courses ORDER BY name');
+    const { rows: assignedRows } = await db.query('SELECT course_id FROM competition_courses WHERE competition_id = $1', [req.params.id]);
+    const assignedCourseIds = assignedRows.map((r) => r.course_id);
+
+    res.render('admin/competition-edit', { comp, courses, assignedCourseIds, FORMAT_LABELS, error: null });
+  })
+);
+
+router.post(
+  '/competitions/:id/edit',
+  asyncHandler(async (req, res) => {
+    const { rows: compRows } = await db.query(
+      `SELECT c.*, (SELECT COUNT(*) FROM rounds r WHERE r.competition_id = c.id) AS rounds_count
+       FROM competitions c WHERE c.id = $1`,
+      [req.params.id]
+    );
+    const comp = compRows[0];
+    if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
+
+    const { rows: courses } = await db.query('SELECT * FROM courses ORDER BY name');
+    const { rows: assignedRows } = await db.query('SELECT course_id FROM competition_courses WHERE competition_id = $1', [req.params.id]);
+    const assignedCourseIds = assignedRows.map((r) => r.course_id);
+
+    const { name, compDate, format } = req.body;
+    const type = ['sprint', 'major'].includes(req.body.type) ? req.body.type : 'league';
+    const courseIds = [].concat(req.body.courseIds || []).map((id) => parseInt(id, 10)).filter(Number.isFinite);
+
+    const entryFeeEnabled = req.body.entryFeeEnabled === 'on';
+    const entryFeeAmount = entryFeeEnabled ? parseFloat(req.body.entryFeeAmount) : null;
+    const entryFeeLink = entryFeeEnabled ? (req.body.entryFeeLink || '').trim() : null;
+
+    // Rounds already store their gross/net/stableford numbers computed under
+    // whatever format was live at submission time, but the leaderboard and
+    // season standings always re-rank using the competition's *current*
+    // format — so changing format after anyone's played would silently
+    // apply the wrong ranking rules to numbers computed under the old ones.
+    // Type is safe to change any time: majors/sprints are just a live
+    // multiplier/exclusion applied at read time, not baked into a round.
+    const formatLocked = comp.rounds_count > 0;
+
+    const fail = (error) => res.render('admin/competition-edit', { comp, courses, assignedCourseIds, FORMAT_LABELS, error });
+
+    if (!name || !compDate || courseIds.length === 0 || !['stableford', 'net_stroke', 'gross_stroke'].includes(format)) {
+      return fail('Please fill in every field and choose at least one course.');
+    }
+    if (formatLocked && format !== comp.format) {
+      return fail("Scoring format can't be changed once a round has been submitted — it would misapply the new rules to already-played scores.");
+    }
+    if (entryFeeEnabled && (!Number.isFinite(entryFeeAmount) || entryFeeAmount <= 0 || !/^https?:\/\//.test(entryFeeLink))) {
+      return fail('Give the entry fee a valid amount and a payment link starting with http(s)://.');
+    }
+
+    await db.withTransaction(async (client) => {
+      await client.query(
+        `UPDATE competitions
+         SET name = $1, comp_date = $2, format = $3, type = $4,
+             entry_fee_enabled = $5, entry_fee_amount = $6, entry_fee_link = $7
+         WHERE id = $8`,
+        [name.trim(), compDate, format, type, entryFeeEnabled, entryFeeAmount, entryFeeLink, req.params.id]
+      );
+
+      const keep = new Set(courseIds);
+      const had = new Set(assignedCourseIds);
+      for (const courseId of courseIds) {
+        if (!had.has(courseId)) {
+          await client.query('INSERT INTO competition_courses (competition_id, course_id) VALUES ($1, $2)', [req.params.id, courseId]);
+        }
+      }
+      for (const courseId of assignedCourseIds) {
+        if (!keep.has(courseId)) {
+          await client.query('DELETE FROM competition_courses WHERE competition_id = $1 AND course_id = $2', [req.params.id, courseId]);
+        }
+      }
+    });
+
+    res.redirect('/admin/competitions?updated=1');
   })
 );
 
