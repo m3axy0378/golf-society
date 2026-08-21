@@ -402,3 +402,182 @@ test("editing a competition rejects a format change once a round has been submit
   assert.equal(withTransactionMock.mock.calls.length, 0);
   assert.notEqual(res.status, 302);
 });
+
+test('reassigning a round to a different player recomputes it against their handicap and recalculates both handicaps', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const round = { id: 42, player_id: 1, course_id: 5, competition_id: 7 };
+  const newPlayer = { id: 2, name: 'New Player', handicap_index: 12.0 };
+  const course = { id: 5, name: 'Test Course', par: 8, course_rating: 68.0, slope_rating: 125 };
+  const holes = [
+    { hole_number: 1, par: 4, stroke_index: 5 },
+    { hole_number: 2, par: 4, stroke_index: 7 },
+  ];
+  const existingScores = [
+    { hole_number: 1, strokes: 5 },
+    { hole_number: 2, strokes: 4 },
+  ];
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      { match: 'SELECT * FROM rounds WHERE id = $1', result: { rows: [round] } },
+      { match: 'SELECT * FROM players WHERE id = $1', result: { rows: [newPlayer] } },
+      { match: 'SELECT * FROM courses WHERE id = $1', result: { rows: [course] } },
+      { match: 'SELECT type FROM competitions WHERE id = $1', result: { rows: [{ type: 'league' }] } },
+      { match: 'FROM course_holes WHERE course_id = $1', result: { rows: holes } },
+      { match: 'FROM hole_scores WHERE round_id = $1', result: { rows: existingScores } },
+    ])
+  );
+
+  const clientQuery = makeQueryMock([
+    { match: 'UPDATE rounds SET player_id', result: { rows: [] } },
+    { match: 'DELETE FROM entries WHERE competition_id = $1 AND player_id = $2', result: { rows: [] } },
+    { match: 'INSERT INTO entries', result: { rows: [] } },
+    { match: 'SELECT r.gross_total, co.course_rating, co.slope_rating', result: { rows: [] } },
+    { match: 'UPDATE players SET handicap_index', result: { rows: [] } },
+  ]);
+  t.mock.method(db, 'withTransaction', async (fn) => fn({ query: clientQuery }));
+
+  const res = await fetch(`${app.baseUrl}/admin/rounds/42/reassign-player`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'playerId=2',
+    redirect: 'manual',
+  });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), '/admin/rounds/42/edit?playerMoved=1');
+
+  const updateCall = clientQuery.calls.find((c) => c.text.includes('UPDATE rounds SET player_id'));
+  assert.equal(updateCall.params[0], 2); // new player_id
+  assert.equal(updateCall.params[1], 12.0); // recomputed against the new player's own handicap
+  assert.equal(updateCall.params[6], 42); // round id
+
+  assert.ok(clientQuery.calls.some((c) => c.text.includes('DELETE FROM entries') && c.params[1] === 1));
+  assert.ok(clientQuery.calls.some((c) => c.text.includes('INSERT INTO entries') && c.params[1] === 2));
+
+  // Both the old and new player's handicaps get recalculated — one round
+  // moving between them changes both of their histories.
+  const handicapUpdates = clientQuery.calls.filter((c) => c.text.includes('SELECT r.gross_total, co.course_rating, co.slope_rating'));
+  assert.equal(handicapUpdates.length, 2);
+});
+
+test('reassigning a round to a different player is a no-op if the target player is unknown', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const round = { id: 42, player_id: 1, course_id: 5, competition_id: 7 };
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      { match: 'SELECT * FROM rounds WHERE id = $1', result: { rows: [round] } },
+      { match: 'SELECT * FROM players WHERE id = $1', result: { rows: [] } },
+    ])
+  );
+  const withTransactionMock = t.mock.method(db, 'withTransaction', async () => {
+    throw new Error('should not start a transaction for an unknown player');
+  });
+
+  const res = await fetch(`${app.baseUrl}/admin/rounds/42/reassign-player`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'playerId=999',
+    redirect: 'manual',
+  });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), '/admin/rounds/42/edit');
+  assert.equal(withTransactionMock.mock.calls.length, 0);
+});
+
+test('reassigning a round to a different course recomputes it and adds the course to the competition', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  // A sprint round needs course_holes data for holes 1-9.
+  const sprintHoles = Array.from({ length: 9 }, (_, i) => ({ hole_number: i + 1, par: 4, stroke_index: i + 1 }));
+  const existingScores = sprintHoles.map((h) => ({ hole_number: h.hole_number, strokes: 5 }));
+
+  const round = { id: 42, player_id: 1, course_id: 5, competition_id: 7 };
+  const player = { id: 1, name: 'Player One', handicap_index: 15.0 };
+  const newCourse = { id: 6, name: 'New Course', par: 36, course_rating: 34.0, slope_rating: 130 };
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      { match: 'SELECT * FROM rounds WHERE id = $1', result: { rows: [round] } },
+      { match: 'SELECT * FROM courses WHERE id = $1', result: { rows: [newCourse] } },
+      { match: 'SELECT * FROM players WHERE id = $1', result: { rows: [player] } },
+      { match: 'SELECT type FROM competitions WHERE id = $1', result: { rows: [{ type: 'sprint' }] } },
+      { match: 'FROM course_holes WHERE course_id = $1', result: { rows: sprintHoles } },
+      { match: 'FROM hole_scores WHERE round_id = $1', result: { rows: existingScores } },
+    ])
+  );
+
+  const clientQuery = makeQueryMock([
+    { match: 'UPDATE rounds SET course_id', result: { rows: [] } },
+    { match: 'INSERT INTO competition_courses', result: { rows: [] } },
+    { match: 'SELECT r.gross_total, co.course_rating, co.slope_rating', result: { rows: [] } },
+    { match: 'UPDATE players SET handicap_index', result: { rows: [] } },
+  ]);
+  t.mock.method(db, 'withTransaction', async (fn) => fn({ query: clientQuery }));
+
+  const res = await fetch(`${app.baseUrl}/admin/rounds/42/reassign-course`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'courseId=6',
+    redirect: 'manual',
+  });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), '/admin/rounds/42/edit?courseMoved=1');
+
+  const updateCall = clientQuery.calls.find((c) => c.text.includes('UPDATE rounds SET course_id'));
+  assert.equal(updateCall.params[0], 6); // new course_id
+  assert.equal(updateCall.params[6], 42); // round id
+
+  assert.ok(clientQuery.calls.some((c) => c.text.includes('INSERT INTO competition_courses') && c.params[1] === 6));
+  assert.equal(clientQuery.calls.filter((c) => c.text.includes('SELECT r.gross_total, co.course_rating, co.slope_rating')).length, 1);
+});
+
+test("reassigning a round to a different course is rejected if that course doesn't have enough hole data, without touching the database", async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const round = { id: 42, player_id: 1, course_id: 5, competition_id: 7 };
+  const newCourse = { id: 6, name: 'Nine Hole Course', par: 36, course_rating: 34.0, slope_rating: 130 };
+  // A league round needs 18 holes' worth of course_holes data — this course
+  // only has 2, well short of what a full round requires.
+  const shortHoles = [
+    { hole_number: 1, par: 4, stroke_index: 5 },
+    { hole_number: 2, par: 4, stroke_index: 7 },
+  ];
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      { match: 'SELECT * FROM rounds WHERE id = $1', result: { rows: [round] } },
+      { match: 'SELECT * FROM courses WHERE id = $1', result: { rows: [newCourse] } },
+      { match: 'SELECT * FROM players WHERE id = $1', result: { rows: [{ id: 1, handicap_index: 15.0 }] } },
+      { match: 'SELECT type FROM competitions WHERE id = $1', result: { rows: [{ type: 'league' }] } },
+      { match: 'FROM course_holes WHERE course_id = $1', result: { rows: shortHoles } },
+    ])
+  );
+  const withTransactionMock = t.mock.method(db, 'withTransaction', async () => {
+    throw new Error('should not start a transaction when the course lacks enough hole data');
+  });
+
+  await fetch(`${app.baseUrl}/admin/rounds/42/reassign-course`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'courseId=6',
+    redirect: 'manual',
+  });
+  // No view engine is set up in this test harness (see file header), so the
+  // rejection's res.render() doesn't produce a clean 400 response here — the
+  // meaningful assertion is that it never reached the transaction.
+  assert.equal(withTransactionMock.mock.calls.length, 0);
+});

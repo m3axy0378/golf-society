@@ -710,8 +710,14 @@ router.get(
       'SELECT hole_number, strokes FROM hole_scores WHERE round_id = $1 ORDER BY hole_number',
       [round.id]
     );
+    const { rows: allPlayers } = await db.query('SELECT id, name FROM players ORDER BY name');
+    const { rows: allCourses } = await db.query('SELECT id, name FROM courses ORDER BY name');
 
-    res.render('admin/round-edit', { round, holes, holeScores, error: null });
+    let message = null;
+    if (req.query.playerMoved) message = 'Round moved to the new player.';
+    else if (req.query.courseMoved) message = 'Round moved to the new course.';
+
+    res.render('admin/round-edit', { round, holes, holeScores, allPlayers, allCourses, error: null, message });
   })
 );
 
@@ -739,6 +745,8 @@ router.post(
         'SELECT hole_number, strokes FROM hole_scores WHERE round_id = $1 ORDER BY hole_number',
         [round.id]
       );
+      const { rows: allPlayers } = await db.query('SELECT id, name FROM players ORDER BY name');
+      const { rows: allCourses } = await db.query('SELECT id, name FROM courses ORDER BY name');
       return res.status(400).render('admin/round-edit', {
         round: {
           ...round,
@@ -752,6 +760,9 @@ router.post(
         },
         holes,
         holeScores,
+        allPlayers,
+        allCourses,
+        message: null,
         error: 'Please enter a valid score (1-20) for every hole.',
       });
     }
@@ -786,6 +797,137 @@ router.post(
     });
 
     res.redirect(`/competitions/${round.competition_id}`);
+  })
+);
+
+// Fixes a round entered under the wrong player's name (a mis-tap on a
+// shared device, or a marker who entered their own score by mistake).
+// Reuses the same hole-by-hole strokes already recorded — only the numbers
+// that depend on WHO played (handicap-related) get recomputed, against the
+// new player's own current handicap index. Both players' handicaps need
+// recalculating afterward: the old player loses this round from their
+// history, the new player gains it.
+router.post(
+  '/rounds/:id/reassign-player',
+  asyncHandler(async (req, res) => {
+    const { rows: roundRows } = await db.query('SELECT * FROM rounds WHERE id = $1', [req.params.id]);
+    const round = roundRows[0];
+    if (!round) return res.status(404).render('error', { message: 'Round not found.' });
+
+    const newPlayerId = parseInt(req.body.playerId, 10);
+    const { rows: newPlayerRows } = await db.query('SELECT * FROM players WHERE id = $1', [newPlayerId]);
+    const newPlayer = newPlayerRows[0];
+    if (!newPlayer || newPlayerId === round.player_id) {
+      return res.redirect(`/admin/rounds/${round.id}/edit`);
+    }
+
+    const { rows: courseRows } = await db.query('SELECT * FROM courses WHERE id = $1', [round.course_id]);
+    const course = courseRows[0];
+    const { rows: compTypeRows } = await db.query('SELECT type FROM competitions WHERE id = $1', [round.competition_id]);
+    const { rows: allHoles } = await db.query(
+      'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
+      [course.id]
+    );
+    const holes = compTypeRows[0].type === 'sprint' ? allHoles.filter((h) => h.hole_number <= 9) : allHoles;
+
+    const { rows: existingScores } = await db.query('SELECT hole_number, strokes FROM hole_scores WHERE round_id = $1', [round.id]);
+    const strokesByHole = new Map(existingScores.map((h) => [h.hole_number, h.strokes]));
+    const grossScores = holes.map((h) => strokesByHole.get(h.hole_number));
+
+    const result = computeRound({
+      grossScores,
+      holes: holes.map((h) => ({ par: h.par, strokeIndex: h.stroke_index })),
+      handicapIndex: newPlayer.handicap_index,
+      slopeRating: course.slope_rating,
+      courseRating: course.course_rating,
+      coursePar: course.par,
+    });
+
+    const oldPlayerId = round.player_id;
+    await db.withTransaction(async (client) => {
+      await client.query(
+        'UPDATE rounds SET player_id = $1, handicap_index_used = $2, course_handicap = $3, gross_total = $4, net_total = $5, stableford_points = $6 WHERE id = $7',
+        [newPlayerId, newPlayer.handicap_index, result.courseHandicap, result.grossTotal, result.netTotal, result.stablefordPoints, round.id]
+      );
+      // Moves the competition "entry" along with the round rather than
+      // leaving the old player showing as entered for a competition they
+      // no longer have a score in — ON CONFLICT DO NOTHING covers the case
+      // where the new player already had their own entry (their existing
+      // entry_fee_paid status is left alone rather than reset).
+      await client.query('DELETE FROM entries WHERE competition_id = $1 AND player_id = $2', [round.competition_id, oldPlayerId]);
+      await client.query(
+        'INSERT INTO entries (competition_id, player_id, entry_fee_paid) VALUES ($1, $2, FALSE) ON CONFLICT (competition_id, player_id) DO NOTHING',
+        [round.competition_id, newPlayerId]
+      );
+      await updatePlayerHandicap(client.query.bind(client), oldPlayerId);
+      await updatePlayerHandicap(client.query.bind(client), newPlayerId);
+    });
+
+    res.redirect(`/admin/rounds/${round.id}/edit?playerMoved=1`);
+  })
+);
+
+// Fixes a round recorded against the wrong course (the right course played,
+// wrong one picked from a similar-named list). Keeps the same hole-by-hole
+// strokes and player, but every number derived from the course (course/
+// slope rating, par) gets recomputed against the new one.
+router.post(
+  '/rounds/:id/reassign-course',
+  asyncHandler(async (req, res) => {
+    const { rows: roundRows } = await db.query('SELECT * FROM rounds WHERE id = $1', [req.params.id]);
+    const round = roundRows[0];
+    if (!round) return res.status(404).render('error', { message: 'Round not found.' });
+
+    const newCourseId = parseInt(req.body.courseId, 10);
+    if (!Number.isFinite(newCourseId) || newCourseId === round.course_id) {
+      return res.redirect(`/admin/rounds/${round.id}/edit`);
+    }
+    const { rows: newCourseRows } = await db.query('SELECT * FROM courses WHERE id = $1', [newCourseId]);
+    const newCourse = newCourseRows[0];
+    if (!newCourse) return res.redirect(`/admin/rounds/${round.id}/edit`);
+
+    const { rows: playerRows } = await db.query('SELECT * FROM players WHERE id = $1', [round.player_id]);
+    const player = playerRows[0];
+    const { rows: compTypeRows } = await db.query('SELECT type FROM competitions WHERE id = $1', [round.competition_id]);
+    const requiredHoleCount = compTypeRows[0].type === 'sprint' ? 9 : 18;
+    const { rows: newAllHoles } = await db.query(
+      'SELECT hole_number, par, stroke_index FROM course_holes WHERE course_id = $1 ORDER BY hole_number',
+      [newCourse.id]
+    );
+    const newHoles = newAllHoles.filter((h) => h.hole_number <= requiredHoleCount);
+
+    if (newHoles.length < requiredHoleCount) {
+      return res.status(400).render('error', {
+        message: `${newCourse.name} doesn't have hole data set up for all ${requiredHoleCount} holes this round needs — pick a different course.`,
+      });
+    }
+
+    const { rows: existingScores } = await db.query('SELECT hole_number, strokes FROM hole_scores WHERE round_id = $1', [round.id]);
+    const strokesByHole = new Map(existingScores.map((h) => [h.hole_number, h.strokes]));
+    const grossScores = newHoles.map((h) => strokesByHole.get(h.hole_number));
+
+    const result = computeRound({
+      grossScores,
+      holes: newHoles.map((h) => ({ par: h.par, strokeIndex: h.stroke_index })),
+      handicapIndex: player.handicap_index,
+      slopeRating: newCourse.slope_rating,
+      courseRating: newCourse.course_rating,
+      coursePar: newCourse.par,
+    });
+
+    await db.withTransaction(async (client) => {
+      await client.query(
+        'UPDATE rounds SET course_id = $1, handicap_index_used = $2, course_handicap = $3, gross_total = $4, net_total = $5, stableford_points = $6 WHERE id = $7',
+        [newCourseId, player.handicap_index, result.courseHandicap, result.grossTotal, result.netTotal, result.stablefordPoints, round.id]
+      );
+      await client.query('INSERT INTO competition_courses (competition_id, course_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [
+        round.competition_id,
+        newCourseId,
+      ]);
+      await updatePlayerHandicap(client.query.bind(client), round.player_id);
+    });
+
+    res.redirect(`/admin/rounds/${round.id}/edit?courseMoved=1`);
   })
 );
 

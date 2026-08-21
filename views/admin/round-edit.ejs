@@ -7,6 +7,37 @@
 </p>
 
 <% if (error) { %><div class="error-box" style="margin:0.75rem 20px;"><%= error %></div><% } %>
+<% if (typeof message !== 'undefined' && message) { %><div class="success-box" style="margin:0.75rem 20px;"><%= message %></div><% } %>
+
+<div class="card" style="max-width:640px;">
+  <h2 class="mt-0" style="font-size:1.05rem;">Wrong player or course?</h2>
+  <p class="muted" style="font-size:0.85rem;">
+    Moves this round — same hole-by-hole strokes, recalculated against the new player's or course's numbers.
+    Both players' Handicap Index get recalculated afterward.
+  </p>
+  <div class="grid-2">
+    <form class="inline-form" method="POST" action="/admin/rounds/<%= round.id %>/reassign-player"
+      onsubmit="return confirm('Move this round to a different player?');" style="display:flex;gap:0.4rem;align-items:center;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <select name="playerId" required style="flex:1;min-width:0;">
+        <% allPlayers.forEach(p => { %>
+          <option value="<%= p.id %>" <%= p.id === round.player_id ? 'selected' : '' %>><%= p.name %></option>
+        <% }) %>
+      </select>
+      <button type="submit" class="btn-secondary" style="padding:0.55rem 0.7rem;">Move</button>
+    </form>
+    <form class="inline-form" method="POST" action="/admin/rounds/<%= round.id %>/reassign-course"
+      onsubmit="return confirm('Move this round to a different course?');" style="display:flex;gap:0.4rem;align-items:center;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <select name="courseId" required style="flex:1;min-width:0;">
+        <% allCourses.forEach(c => { %>
+          <option value="<%= c.id %>" <%= c.id === round.course_id ? 'selected' : '' %>><%= c.name %></option>
+        <% }) %>
+      </select>
+      <button type="submit" class="btn-secondary" style="padding:0.55rem 0.7rem;">Move</button>
+    </form>
+  </div>
+</div>
 
 <div class="card" style="max-width:640px;">
   <form method="POST" action="/admin/rounds/<%= round.id %>/edit"
