@@ -581,3 +581,47 @@ test("reassigning a round to a different course is rejected if that course doesn
   // meaningful assertion is that it never reached the transaction.
   assert.equal(withTransactionMock.mock.calls.length, 0);
 });
+
+test('removing an entry with no round yet deletes it', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const queryMock = makeQueryMock([
+    { match: 'FROM entries e', result: { rows: [{ id: 15, competition_id: 7, player_id: 3, round_id: null }] } },
+    { match: 'DELETE FROM entries WHERE id = $1', result: { rows: [] } },
+  ]);
+  t.mock.method(db, 'query', queryMock);
+
+  const res = await fetch(`${app.baseUrl}/admin/entries/15/delete`, { method: 'POST' });
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { ok: true });
+
+  const deleteCall = queryMock.calls.find((c) => c.text.includes('DELETE FROM entries WHERE id = $1'));
+  assert.deepEqual(deleteCall.params, [15]);
+});
+
+test("removing an entry that already has a round is rejected, without deleting it", async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const queryMock = makeQueryMock([
+    { match: 'FROM entries e', result: { rows: [{ id: 15, competition_id: 7, player_id: 3, round_id: 99 }] } },
+  ]);
+  t.mock.method(db, 'query', queryMock);
+
+  const res = await fetch(`${app.baseUrl}/admin/entries/15/delete`, { method: 'POST' });
+  assert.equal(res.status, 400);
+  assert.deepEqual(await res.json(), { error: "Can't remove an entry that already has a submitted round." });
+  assert.ok(!queryMock.calls.some((c) => c.text.includes('DELETE FROM entries')));
+});
+
+test('removing an unknown entry 404s', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  t.mock.method(db, 'query', makeQueryMock([{ match: 'FROM entries e', result: { rows: [] } }]));
+
+  const res = await fetch(`${app.baseUrl}/admin/entries/404/delete`, { method: 'POST' });
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), { error: 'Entry not found.' });
+});

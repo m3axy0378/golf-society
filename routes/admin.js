@@ -1011,4 +1011,28 @@ router.post(
   })
 );
 
+// For a player who entered by mistake, or changed their mind before
+// playing — deliberately refuses once a round exists for that entry
+// (same competition_id/player_id pair), since removing the "entered" record
+// at that point wouldn't delete the round anyway, just leave it looking like
+// they scored without ever entering.
+router.post(
+  '/entries/:id/delete',
+  asyncHandler(async (req, res) => {
+    const { rows } = await db.query(
+      `SELECT e.id, e.competition_id, e.player_id, r.id AS round_id
+       FROM entries e
+       LEFT JOIN rounds r ON r.competition_id = e.competition_id AND r.player_id = e.player_id
+       WHERE e.id = $1`,
+      [req.params.id]
+    );
+    const entry = rows[0];
+    if (!entry) return res.status(404).json({ error: 'Entry not found.' });
+    if (entry.round_id) return res.status(400).json({ error: "Can't remove an entry that already has a submitted round." });
+
+    await db.query('DELETE FROM entries WHERE id = $1', [entry.id]);
+    res.json({ ok: true });
+  })
+);
+
 module.exports = router;

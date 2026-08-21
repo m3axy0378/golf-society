@@ -560,7 +560,11 @@
               <div class="lb-pending-name"><%= e.player_name %></div>
               <div class="lb-pending-sub">Entered, not yet played</div>
             </div>
-            <span class="lb-pending-dash">&mdash;</span>
+            <% if (currentPlayer.is_admin) { %>
+              <button type="button" class="btn-secondary entry-remove" data-entry-id="<%= e.id %>" style="padding:0.2rem 0.55rem;font-size:0.78rem;">Remove</button>
+            <% } else { %>
+              <span class="lb-pending-dash">&mdash;</span>
+            <% } %>
           </div>
         </li>
       <% }) %>
@@ -612,6 +616,24 @@
   document.addEventListener('click', (e) => {
     document.querySelectorAll('.lb-picker.open').forEach((picker) => {
       if (!picker.parentElement.contains(e.target)) picker.classList.remove('open');
+    });
+  });
+
+  document.querySelectorAll('.entry-remove').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Remove this entry? They can enter again later if they change their mind.')) return;
+      btn.disabled = true;
+      const res = await fetch(`/admin/entries/${btn.dataset.entryId}/delete`, {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Couldn't remove this entry — please try again.");
+        btn.disabled = false;
+      }
     });
   });
 </script>
