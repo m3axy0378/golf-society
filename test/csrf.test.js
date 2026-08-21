@@ -46,10 +46,16 @@ test('a token issued on a GET is accepted on a real subsequent POST in the same 
   t.after(() => app.close());
 
   const getRes = await fetch(`${app.baseUrl}/form`);
-  // Headers.get('set-cookie') is unreliable by design (the Fetch spec
-  // forbids combining multiple Set-Cookie values into one string) —
-  // getSetCookie() is the API meant for reading it back out.
-  const cookie = getRes.headers.getSetCookie()[0].split(';')[0];
+  // cookie-session, given a secret, sets two cookies: session=<data> and
+  // session.sig=<its signature> — both are required for the session to
+  // verify as untampered on the next request, so both need forwarding.
+  // (Headers.get('set-cookie') can't do this at all: the Fetch spec forbids
+  // combining multiple Set-Cookie values into one string, which is exactly
+  // why getSetCookie() exists as a separate API returning each one.)
+  const cookie = getRes.headers
+    .getSetCookie()
+    .map((c) => c.split(';')[0])
+    .join('; ');
   const { csrfToken } = await getRes.json();
   assert.match(csrfToken, /^[0-9a-f]{64}$/);
 
