@@ -263,7 +263,10 @@ test('editing a player updates name and email and redirects back with a confirma
   const app = await startTestApp();
   t.after(() => app.close());
 
-  const queryMock = makeQueryMock([{ match: 'UPDATE players SET name', result: { rows: [] } }]);
+  const queryMock = makeQueryMock([
+    { match: 'SELECT * FROM players ORDER BY name', result: { rows: [] } },
+    { match: 'UPDATE players SET name', result: { rows: [] } },
+  ]);
   t.mock.method(db, 'query', queryMock);
 
   const res = await fetch(`${app.baseUrl}/admin/players/7/edit`, {
@@ -284,7 +287,10 @@ test('resetting a player\'s password hashes it and clears any pending self-servi
   const app = await startTestApp();
   t.after(() => app.close());
 
-  const queryMock = makeQueryMock([{ match: 'UPDATE players SET password_hash', result: { rows: [] } }]);
+  const queryMock = makeQueryMock([
+    { match: 'SELECT * FROM players ORDER BY name', result: { rows: [] } },
+    { match: 'UPDATE players SET password_hash', result: { rows: [] } },
+  ]);
   t.mock.method(db, 'query', queryMock);
 
   const res = await fetch(`${app.baseUrl}/admin/players/7/reset-password`, {
