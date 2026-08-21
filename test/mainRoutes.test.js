@@ -200,3 +200,28 @@ test('/handicaps excludes test users from the players list, both in the query an
   const playersQuery = queryMock.calls.find((c) => c.text.includes('FROM players'));
   assert.ok(playersQuery.text.includes('is_test_user = FALSE'));
 });
+
+test('POST /profile rejects a self-edit once handicap_locked is set, even with zero rounds played', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const queryMock = makeQueryMock([
+    { match: 'SELECT * FROM players WHERE id', result: { rows: [{ id: 1, handicap_index: 15.4, handicap_locked: true }] } },
+    { match: 'JOIN courses co', result: { rows: [] } }, // myRounds
+    { match: 'JOIN players p', result: { rows: [] } }, // sharedRounds
+  ]);
+  t.mock.method(db, 'query', queryMock);
+
+  const res = await fetch(`${app.baseUrl}/profile`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'handicapIndex=20',
+  });
+  assert.equal(res.status, 200);
+  const html = await res.text();
+  assert.match(html, /can't be edited by hand/);
+
+  // The whole point of handicap_locked: this must reject before ever
+  // reaching the UPDATE, regardless of roundsPlayed being 0.
+  assert.ok(!queryMock.calls.some((c) => c.text.includes('UPDATE players SET handicap_index')));
+});

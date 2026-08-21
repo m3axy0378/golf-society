@@ -253,11 +253,22 @@ ALTER TABLE players ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMP
 -- routes/onboarding.js): defaults TRUE so it backfills existing rows as
 -- already-confirmed and admin/setup-created players (who already have an
 -- admin-entered handicap) skip it too — only routes/signup.js's self-signup
--- INSERT sets this FALSE. Once the player submits the onboarding form it
--- flips to TRUE for good; from then on their Handicap Index is only ever
--- changed by the automatic post-round recalculation in lib/handicap.js (or
--- an admin), never by the player directly.
+-- INSERT sets this FALSE. Only controls whether the onboarding redirect
+-- fires; it is NOT what locks self-editing (see handicap_locked below), since
+-- admin/setup-created players default TRUE here but should keep the normal
+-- editable-until-first-round behaviour on their Profile page.
 ALTER TABLE players ADD COLUMN IF NOT EXISTS handicap_confirmed_by_player BOOLEAN NOT NULL DEFAULT TRUE;
+
+-- Separate from handicap_confirmed_by_player above: this is what actually
+-- stops a player hand-editing their own Handicap Index on Profile once
+-- they've been through onboarding. Defaults FALSE (unlocked) for everyone,
+-- including self-signups until they complete onboarding — only
+-- routes/onboarding.js's POST handler ever sets it TRUE, and nothing ever
+-- sets it back to FALSE. Existing players and admin/setup-created players are
+-- unaffected: they keep the pre-existing "editable until your first
+-- submitted round" behaviour, since that's a separate check in
+-- routes/main.js's /profile handler.
+ALTER TABLE players ADD COLUMN IF NOT EXISTS handicap_locked BOOLEAN NOT NULL DEFAULT FALSE;
 `;
 
 let readyPromise = null;

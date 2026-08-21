@@ -85,6 +85,9 @@ test('POST /welcome/handicap saves the handicap, confirms it, and sends the play
   assert.equal(queryMock.calls.length, 1);
   assert.deepEqual(queryMock.calls[0].params, [16.4, 4]);
   assert.ok(queryMock.calls[0].text.includes('handicap_confirmed_by_player = TRUE'));
+  // handicap_locked (not handicap_confirmed_by_player) is what actually stops
+  // self-editing on Profile afterward — see routes/main.js's /profile handler.
+  assert.ok(queryMock.calls[0].text.includes('handicap_locked = TRUE'));
 });
 
 test('POST /welcome/handicap rejects a non-numeric handicap without touching the database', async (t) => {

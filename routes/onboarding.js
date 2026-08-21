@@ -27,10 +27,10 @@ router.post(
       return res.render('onboarding-handicap', { error: 'Please enter a valid handicap index.', handicapIndex: req.body.handicapIndex });
     }
 
-    await db.query('UPDATE players SET handicap_index = $1, handicap_confirmed_by_player = TRUE WHERE id = $2', [
-      handicapIndex,
-      req.session.playerId,
-    ]);
+    await db.query(
+      'UPDATE players SET handicap_index = $1, handicap_confirmed_by_player = TRUE, handicap_locked = TRUE WHERE id = $2',
+      [handicapIndex, req.session.playerId]
+    );
     res.redirect('/dashboard?enableNotifications=1');
   })
 );

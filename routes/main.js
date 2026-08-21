@@ -750,7 +750,7 @@ router.post(
     const { rows: beforeRows } = await db.query('SELECT * FROM players WHERE id = $1', [req.session.playerId]);
     const statsForMessage = await getStatsData(req.session.playerId, beforeRows[0].handicap_index);
 
-    if (statsForMessage.roundsPlayed > 0) {
+    if (statsForMessage.roundsPlayed > 0 || beforeRows[0].handicap_locked) {
       return res.render('profile', {
         player: beforeRows[0],
         message: 'Your Handicap Index is calculated automatically now and can\'t be edited by hand.',

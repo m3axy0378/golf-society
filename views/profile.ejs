@@ -34,7 +34,7 @@
   </div>
 </div>
 
-<% if (roundsPlayed === 0) { %>
+<% if (roundsPlayed === 0 && !player.handicap_locked) { %>
   <div class="card">
     <h2 class="mt-0" style="font-size:1.05rem;">Starting Handicap Index</h2>
     <form class="stacked" method="POST" action="/profile">
