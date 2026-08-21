@@ -248,6 +248,16 @@ ALTER TABLE players ADD COLUMN IF NOT EXISTS is_test_user BOOLEAN NOT NULL DEFAU
 -- live forever. Both are cleared once the password is actually reset.
 ALTER TABLE players ADD COLUMN IF NOT EXISTS password_reset_token_hash TEXT;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMPTZ;
+
+-- Gates the "enter your starting handicap" onboarding step (see
+-- routes/onboarding.js): defaults TRUE so it backfills existing rows as
+-- already-confirmed and admin/setup-created players (who already have an
+-- admin-entered handicap) skip it too — only routes/signup.js's self-signup
+-- INSERT sets this FALSE. Once the player submits the onboarding form it
+-- flips to TRUE for good; from then on their Handicap Index is only ever
+-- changed by the automatic post-round recalculation in lib/handicap.js (or
+-- an admin), never by the player directly.
+ALTER TABLE players ADD COLUMN IF NOT EXISTS handicap_confirmed_by_player BOOLEAN NOT NULL DEFAULT TRUE;
 `;
 
 let readyPromise = null;

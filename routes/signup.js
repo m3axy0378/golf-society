@@ -28,12 +28,15 @@ router.post(
     try {
       const hash = bcrypt.hashSync(password, 10);
       const { rows } = await db.query(
-        'INSERT INTO players (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, is_admin',
+        'INSERT INTO players (name, email, password_hash, handicap_confirmed_by_player) VALUES ($1, $2, $3, FALSE) RETURNING id, is_admin',
         [name.trim(), email.trim().toLowerCase(), hash]
       );
       const player = rows[0];
       req.session.playerId = player.id;
       req.session.isAdmin = !!player.is_admin;
+      // The server.js onboarding gate redirects here to /welcome/handicap
+      // before this destination is ever reached, since handicap_confirmed_by_player
+      // is FALSE — this is just where they land once that's done.
       res.redirect('/dashboard?enableNotifications=1');
     } catch (e) {
       if (e.code === '23505') {

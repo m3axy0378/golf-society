@@ -101,7 +101,7 @@ app.use(
     const settingsPromise = db.getSettings({ society_name: 'Golf Society', pairing_sheet_enabled: 'true' });
     if (req.session.playerId) {
       const { rows } = await db.query(
-        'SELECT id, name, email, handicap_index, is_admin, dashboard_intro_seen, is_test_user FROM players WHERE id = $1',
+        'SELECT id, name, email, handicap_index, is_admin, dashboard_intro_seen, is_test_user, handicap_confirmed_by_player FROM players WHERE id = $1',
         [req.session.playerId]
       );
       res.locals.currentPlayer = rows[0] || null;
@@ -140,6 +140,19 @@ app.use(
   })
 );
 
+// New self-signups start with handicap_confirmed_by_player = FALSE (see
+// routes/signup.js) and must confirm their starting handicap on
+// /welcome/handicap before reaching anywhere else — once confirmed the flag
+// flips to TRUE for good, so this stops applying to them. Admin/setup-created
+// players default TRUE and are never gated here.
+app.use((req, res, next) => {
+  const player = res.locals.currentPlayer;
+  if (player && !player.handicap_confirmed_by_player && req.path !== '/welcome/handicap' && req.path !== '/logout') {
+    return res.redirect('/welcome/handicap');
+  }
+  next();
+});
+
 app.get('/', (req, res) => {
   if (!req.session.playerId) return res.redirect('/login');
   res.redirect('/dashboard');
@@ -148,6 +161,7 @@ app.get('/', (req, res) => {
 app.use('/', require('./routes/setup'));
 app.use('/', require('./routes/auth'));
 app.use('/', require('./routes/signup'));
+app.use('/', require('./routes/onboarding'));
 app.use('/', require('./routes/push'));
 app.use('/', require('./routes/main'));
 app.use('/admin', require('./routes/admin'));

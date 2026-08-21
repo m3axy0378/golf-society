@@ -1,0 +1,24 @@
+<%- include('partials/header', { title: 'Your handicap', mainClass: 'scoreboard-view' }) %>
+
+<div class="comp-header">
+  <h1 class="comp-title" style="text-transform:none;font-size:1.75rem;">Welcome to <%= societyName %></h1>
+  <p class="comp-meta">One last thing before you start playing.</p>
+</div>
+
+<div class="card" style="margin:0.75rem 20px;">
+  <h2 class="mt-0" style="font-size:1.05rem;">What's your current Handicap Index?</h2>
+  <% if (error) { %><div class="error-box"><%= error %></div><% } %>
+  <form class="stacked" method="POST" action="/welcome/handicap">
+    <label>Handicap Index
+      <input type="number" step="0.1" name="handicapIndex" value="<%= handicapIndex %>" required autofocus>
+    </label>
+    <button type="submit">Confirm and start playing</button>
+  </form>
+  <p class="muted" style="font-size:0.85rem;">
+    Enter it as it stands today. Once you confirm it here it can't be edited by hand again —
+    from your first submitted round onward, <%= societyName %> calculates it for you automatically
+    (best 4 of your last 8 rounds), same as real-world handicapping.
+  </p>
+</div>
+
+<%- include('partials/footer') %>
