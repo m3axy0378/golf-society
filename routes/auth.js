@@ -65,6 +65,7 @@ router.post(
         name: player.name,
         resetUrl: `${res.locals.baseUrl}/reset-password/${token}`,
         societyName: res.locals.societyName,
+        baseUrl: res.locals.baseUrl,
       });
     }
 
