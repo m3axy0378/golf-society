@@ -21,6 +21,7 @@ router.get(
     if (req.query.added) message = 'Player added.';
     else if (req.query.updated) message = 'Player details updated.';
     else if (req.query.passwordReset) message = 'Password updated.';
+    else if (req.query.merged) message = 'Players merged.';
     res.render('admin/players', { players, error: null, message });
   })
 );
@@ -138,6 +139,78 @@ router.post(
   asyncHandler(async (req, res) => {
     await db.query('DELETE FROM players WHERE id = $1', [req.params.id]);
     res.redirect('/admin/players');
+  })
+);
+
+// For two accounts that turn out to be the same person (a duplicate
+// signup). Everything belonging to "merge" moves onto "keep" — rounds,
+// entries, reactions, pairing spots, push subscriptions — and "merge" is
+// deleted. Rounds are refused if both players scored the *same*
+// competition: rounds.player_id is UNIQUE per (competition_id, player_id),
+// so migrating one round would either collide or silently need to pick a
+// winner, and picking a winner for the admin is exactly the kind of
+// silent data loss this whole feature exists to avoid — better to ask
+// them to resolve that one competition manually first (e.g. delete
+// whichever of the two rounds is wrong) and retry. Entries/reactions/
+// pairing spots have the same kind of UNIQUE constraint but are much
+// lower-stakes (no scores involved), so those just dedupe silently,
+// keeping "keep"'s row over "merge"'s on a clash.
+router.post(
+  '/players/merge',
+  asyncHandler(async (req, res) => {
+    const keepId = parseInt(req.body.keepPlayerId, 10);
+    const mergeId = parseInt(req.body.mergePlayerId, 10);
+    const { rows: players } = await db.query('SELECT * FROM players ORDER BY name');
+
+    if (!Number.isFinite(keepId) || !Number.isFinite(mergeId) || keepId === mergeId) {
+      return res.render('admin/players', { players, error: 'Choose two different players to merge.', message: null });
+    }
+
+    const { rows: conflictRows } = await db.query(
+      `SELECT c.name FROM rounds r1
+       JOIN rounds r2 ON r2.competition_id = r1.competition_id
+       JOIN competitions c ON c.id = r1.competition_id
+       WHERE r1.player_id = $1 AND r2.player_id = $2`,
+      [keepId, mergeId]
+    );
+    if (conflictRows.length > 0) {
+      return res.render('admin/players', {
+        players,
+        error: `Both players have a score in ${conflictRows.map((c) => c.name).join(', ')} — delete one of those two rounds first, then merge.`,
+        message: null,
+      });
+    }
+
+    await db.withTransaction(async (client) => {
+      await client.query('UPDATE rounds SET player_id = $1 WHERE player_id = $2', [keepId, mergeId]);
+      await client.query('UPDATE rounds SET marker_id = $1 WHERE marker_id = $2', [keepId, mergeId]);
+
+      await client.query(
+        'INSERT INTO entries (competition_id, player_id, entry_fee_paid) SELECT competition_id, $1, entry_fee_paid FROM entries WHERE player_id = $2 ON CONFLICT (competition_id, player_id) DO NOTHING',
+        [keepId, mergeId]
+      );
+      await client.query('DELETE FROM entries WHERE player_id = $1', [mergeId]);
+
+      await client.query(
+        'INSERT INTO round_reactions (round_id, player_id, emoji) SELECT round_id, $1, emoji FROM round_reactions WHERE player_id = $2 ON CONFLICT (round_id, player_id, emoji) DO NOTHING',
+        [keepId, mergeId]
+      );
+      await client.query('DELETE FROM round_reactions WHERE player_id = $1', [mergeId]);
+
+      await client.query(
+        'INSERT INTO pairing_groups (competition_id, player_id, group_number, tee_time) SELECT competition_id, $1, group_number, tee_time FROM pairing_groups WHERE player_id = $2 ON CONFLICT (competition_id, player_id) DO NOTHING',
+        [keepId, mergeId]
+      );
+      await client.query('DELETE FROM pairing_groups WHERE player_id = $1', [mergeId]);
+
+      await client.query('UPDATE push_subscriptions SET player_id = $1 WHERE player_id = $2', [keepId, mergeId]);
+
+      await client.query('DELETE FROM players WHERE id = $1', [mergeId]);
+
+      await updatePlayerHandicap(client.query.bind(client), keepId);
+    });
+
+    res.redirect('/admin/players?merged=1');
   })
 );
 

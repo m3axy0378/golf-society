@@ -94,6 +94,31 @@
   </p>
 </div>
 
+<% if (players.length > 1) { %>
+  <div class="card" style="max-width:480px;">
+    <h2 class="mt-0">Merge duplicate players</h2>
+    <p class="muted" style="font-size:0.85rem;margin-top:-0.5rem;">
+      For two accounts that are the same person (a duplicate signup). Everything the second player has — rounds,
+      entries, reactions, pairing spots — moves onto the first, then the second is deleted. This can't be undone.
+    </p>
+    <form class="stacked" method="POST" action="/admin/players/merge"
+      onsubmit="return confirm('Merge these two players? This can\'t be undone.');">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Keep
+        <select name="keepPlayerId" required>
+          <% players.forEach(p => { %><option value="<%= p.id %>"><%= p.name %> (<%= p.email %>)</option><% }) %>
+        </select>
+      </label>
+      <label>Merge in, then delete
+        <select name="mergePlayerId" required>
+          <% players.forEach(p => { %><option value="<%= p.id %>"><%= p.name %> (<%= p.email %>)</option><% }) %>
+        </select>
+      </label>
+      <button type="submit" class="btn-danger">Merge</button>
+    </form>
+  </div>
+<% } %>
+
 <div class="card" style="max-width:480px;">
   <h2 class="mt-0">Society name</h2>
   <form class="stacked" method="POST" action="/admin/settings/society-name">

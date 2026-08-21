@@ -625,3 +625,93 @@ test('removing an unknown entry 404s', async (t) => {
   assert.equal(res.status, 404);
   assert.deepEqual(await res.json(), { error: 'Entry not found.' });
 });
+
+test('merging two players moves everything onto the kept player and deletes the duplicate', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      { match: 'SELECT * FROM players ORDER BY name', result: { rows: [] } },
+      { match: 'SELECT c.name FROM rounds r1', result: { rows: [] } }, // no conflicting competition
+    ])
+  );
+
+  const clientQuery = makeQueryMock([
+    { match: 'UPDATE rounds SET player_id', result: { rows: [] } },
+    { match: 'UPDATE rounds SET marker_id', result: { rows: [] } },
+    { match: 'INSERT INTO entries', result: { rows: [] } },
+    { match: 'DELETE FROM entries WHERE player_id', result: { rows: [] } },
+    { match: 'INSERT INTO round_reactions', result: { rows: [] } },
+    { match: 'DELETE FROM round_reactions WHERE player_id', result: { rows: [] } },
+    { match: 'INSERT INTO pairing_groups', result: { rows: [] } },
+    { match: 'DELETE FROM pairing_groups WHERE player_id', result: { rows: [] } },
+    { match: 'UPDATE push_subscriptions SET player_id', result: { rows: [] } },
+    { match: 'DELETE FROM players WHERE id', result: { rows: [] } },
+    { match: 'SELECT r.gross_total, co.course_rating, co.slope_rating', result: { rows: [] } },
+  ]);
+  t.mock.method(db, 'withTransaction', async (fn) => fn({ query: clientQuery }));
+
+  const res = await fetch(`${app.baseUrl}/admin/players/merge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'keepPlayerId=1&mergePlayerId=2',
+    redirect: 'manual',
+  });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), '/admin/players?merged=1');
+
+  assert.deepEqual(clientQuery.calls.find((c) => c.text.includes('UPDATE rounds SET player_id')).params, [1, 2]);
+  assert.deepEqual(clientQuery.calls.find((c) => c.text.includes('UPDATE rounds SET marker_id')).params, [1, 2]);
+  assert.deepEqual(clientQuery.calls.find((c) => c.text.includes('DELETE FROM players WHERE id')).params, [2]);
+  // The player being merged away is never left standing after every one of
+  // their rows has been moved or deduped onto the kept player.
+  assert.ok(!clientQuery.calls.some((c) => c.text.includes('DELETE FROM players WHERE id') && c.params[0] === 1));
+});
+
+test('merging is rejected if both players have a round in the same competition, without touching either', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      { match: 'SELECT * FROM players ORDER BY name', result: { rows: [] } },
+      { match: 'SELECT c.name FROM rounds r1', result: { rows: [{ name: 'August Assault' }] } },
+    ])
+  );
+  const withTransactionMock = t.mock.method(db, 'withTransaction', async () => {
+    throw new Error('should not start a transaction when both players scored the same competition');
+  });
+
+  await fetch(`${app.baseUrl}/admin/players/merge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'keepPlayerId=1&mergePlayerId=2',
+    redirect: 'manual',
+  });
+  assert.equal(withTransactionMock.mock.calls.length, 0);
+});
+
+test('merging a player with themselves is rejected before any conflict check or transaction', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const queryMock = makeQueryMock([{ match: 'SELECT * FROM players ORDER BY name', result: { rows: [] } }]);
+  t.mock.method(db, 'query', queryMock);
+  const withTransactionMock = t.mock.method(db, 'withTransaction', async () => {
+    throw new Error('should not start a transaction merging a player with themselves');
+  });
+
+  await fetch(`${app.baseUrl}/admin/players/merge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'keepPlayerId=1&mergePlayerId=1',
+    redirect: 'manual',
+  });
+  assert.equal(withTransactionMock.mock.calls.length, 0);
+  assert.ok(!queryMock.calls.some((c) => c.text.includes('SELECT c.name FROM rounds r1')));
+});
