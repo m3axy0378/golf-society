@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const rateLimit = require('express-rate-limit');
 const db = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const emailLib = require('../lib/email');
@@ -13,6 +14,31 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+// Counted per warm serverless instance rather than globally (no shared store
+// like Redis behind this app), so under real multi-instance traffic the true
+// limit is somewhat higher than the numbers below suggest — still enough to
+// stop a casual password-guessing or reset-spam script hitting a single
+// instance, which is the realistic threat for a golf society's user base.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).render('login', { error: 'Too many attempts. Please wait a few minutes and try again.', justReset: false });
+  },
+});
+
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).render('forgot-password', { sent: false, error: 'Too many requests. Please wait a few minutes and try again.' });
+  },
+});
+
 router.get('/login', (req, res) => {
   if (req.session.playerId) return res.redirect('/dashboard');
   res.render('login', { error: null, justReset: req.query.reset === '1' });
@@ -20,6 +46,7 @@ router.get('/login', (req, res) => {
 
 router.post(
   '/login',
+  loginLimiter,
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     const { rows } = await db.query('SELECT * FROM players WHERE email = $1', [(email || '').trim().toLowerCase()]);
@@ -42,11 +69,12 @@ router.post('/logout', (req, res) => {
 
 router.get('/forgot-password', (req, res) => {
   if (req.session.playerId) return res.redirect('/dashboard');
-  res.render('forgot-password', { sent: false });
+  res.render('forgot-password', { sent: false, error: null });
 });
 
 router.post(
   '/forgot-password',
+  forgotPasswordLimiter,
   asyncHandler(async (req, res) => {
     const email = (req.body.email || '').trim().toLowerCase();
     const { rows } = await db.query('SELECT id, name FROM players WHERE email = $1', [email]);
@@ -71,7 +99,7 @@ router.post(
 
     // Same response whether or not the email matched an account — otherwise
     // this form could be used to check who does and doesn't have one.
-    res.render('forgot-password', { sent: true });
+    res.render('forgot-password', { sent: true, error: null });
   })
 );
 

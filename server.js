@@ -2,11 +2,19 @@ require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const cookieSession = require('cookie-session');
+const helmet = require('helmet');
 
 const db = require('./db');
 const asyncHandler = require('./lib/asyncHandler');
 
 const app = express();
+
+// contentSecurityPolicy is left off: several pages (profile, season, the
+// onboarding/push-notification flows) rely on inline <script> blocks with no
+// nonce plumbing, and helmet's default CSP would silently block all of them.
+// Everything else helmet sets by default — X-Content-Type-Options,
+// X-Frame-Options, HSTS, etc. — is safe to turn on as-is.
+app.use(helmet({ contentSecurityPolicy: false }));
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));

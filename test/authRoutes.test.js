@@ -27,7 +27,7 @@ function makeQueryMock(rules) {
   return fn;
 }
 
-async function startTestApp() {
+async function startTestApp(router = authRouter) {
   const app = express();
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '..', 'views'));
@@ -41,12 +41,24 @@ async function startTestApp() {
     res.locals.currentPath = req.path;
     next();
   });
-  app.use('/', authRouter);
+  app.use('/', router);
 
   const server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   const { port } = server.address();
   return { baseUrl: `http://127.0.0.1:${port}`, close: () => new Promise((r) => server.close(r)) };
+}
+
+// routes/auth.js's rate limiters are created once at module scope, so their
+// request counts persist across every test that shares the cached module —
+// fine for the handful of successful requests the other tests in this file
+// make, but the two lockout tests below need a router with its own limiter
+// state so they can drive a specific counter to its limit without being
+// thrown off by requests other tests already made. Busting the require
+// cache gives each one a fresh rate-limit store.
+function freshAuthRouter() {
+  delete require.cache[require.resolve('../routes/auth')];
+  return require('../routes/auth');
 }
 
 test('/forgot-password sends a reset email for a real account and stores a hashed token', async (t) => {
@@ -97,6 +109,44 @@ test("/forgot-password gives the same response for an email that doesn't exist, 
   const html = await res.text();
   assert.match(html, /we've sent a link/);
   assert.equal(sendMock.mock.calls.length, 0);
+});
+
+test('/login locks out further attempts after repeated failures', async (t) => {
+  const app = await startTestApp(freshAuthRouter());
+  t.after(() => app.close());
+
+  t.mock.method(db, 'query', makeQueryMock([{ match: 'SELECT * FROM players WHERE email', result: { rows: [] } }]));
+
+  let lastStatus;
+  for (let i = 0; i < 11; i++) {
+    const res = await fetch(`${app.baseUrl}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'email=nobody@example.com&password=wrong',
+    });
+    lastStatus = res.status;
+    if (i < 10) assert.equal(res.status, 200);
+  }
+  assert.equal(lastStatus, 429);
+});
+
+test('/forgot-password locks out further attempts after repeated requests', async (t) => {
+  const app = await startTestApp(freshAuthRouter());
+  t.after(() => app.close());
+
+  t.mock.method(db, 'query', makeQueryMock([{ match: 'SELECT id, name FROM players WHERE email', result: { rows: [] } }]));
+
+  let lastStatus;
+  for (let i = 0; i < 6; i++) {
+    const res = await fetch(`${app.baseUrl}/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'email=nobody@example.com',
+    });
+    lastStatus = res.status;
+    if (i < 5) assert.equal(res.status, 200);
+  }
+  assert.equal(lastStatus, 429);
 });
 
 test('/reset-password/:token rejects an expired or unknown token', async (t) => {
