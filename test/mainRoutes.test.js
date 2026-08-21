@@ -374,3 +374,25 @@ test('POST /profile rejects a self-edit once handicap_locked is set, even with z
   // reaching the UPDATE, regardless of roundsPlayed being 0.
   assert.ok(!queryMock.calls.some((c) => c.text.includes('UPDATE players SET handicap_index')));
 });
+
+test('GET /profile shows an invite link pointing at /signup on this host', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      { match: 'SELECT * FROM players WHERE id', result: { rows: [{ id: 1, handicap_index: 15.4, handicap_locked: true }] } },
+      { match: 'JOIN courses co', result: { rows: [] } }, // myRounds
+      { match: 'JOIN players p', result: { rows: [] } }, // sharedRounds
+    ])
+  );
+
+  const res = await fetch(`${app.baseUrl}/profile`);
+  assert.equal(res.status, 200);
+  const html = await res.text();
+
+  assert.match(html, /Invite a friend/);
+  assert.match(html, /id="invite-link"[^>]*value="http:\/\/localhost\/signup"/);
+});

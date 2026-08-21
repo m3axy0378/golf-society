@@ -225,6 +225,38 @@
 <% } %>
 
 <div class="card">
+  <h2 class="mt-0" style="font-size:1.05rem;">Invite a friend</h2>
+  <p class="muted" style="font-size:0.85rem;">Know someone who'd want to join the society? Send them this link to sign up.</p>
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+    <input type="text" readonly id="invite-link" value="<%= baseUrl %>/signup" onclick="this.select()"
+      style="flex:1;min-width:0;padding:0.55rem 0.7rem;border:1px solid var(--sb-border);border-radius:8px;font-size:0.9rem;">
+    <button type="button" class="btn-secondary" id="invite-copy">Copy link</button>
+  </div>
+  <a class="btn-secondary" target="_blank" rel="noopener" style="margin-top:0.6rem;display:inline-block;"
+    href="https://wa.me/?text=<%- encodeURIComponent(`🏌️ Come play golf with us on Tee League — sign up here: ${baseUrl}/signup`) %>">
+    Share to WhatsApp
+  </a>
+</div>
+
+<script>
+  (function () {
+    const copyBtn = document.getElementById('invite-copy');
+    const input = document.getElementById('invite-link');
+    const originalLabel = copyBtn.textContent;
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(input.value);
+      } catch {
+        input.select();
+        document.execCommand('copy');
+      }
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => { copyBtn.textContent = originalLabel; }, 1500);
+    });
+  })();
+</script>
+
+<div class="card">
   <form method="POST" action="/logout">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <button type="submit" class="btn-secondary">Log out</button>
