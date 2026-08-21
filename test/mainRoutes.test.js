@@ -212,6 +212,48 @@ test('season standings include every registered player, even with zero competiti
   assert.ok(alphaPos < zuluPos);
 });
 
+test('Season page has no search box for a small roster', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      { match: "type != 'sprint'", result: { rows: [] } },
+      { match: 'FROM rounds r JOIN players p ON p.id = r.player_id', result: { rows: [] } },
+      { match: 'FROM players WHERE is_test_user', result: { rows: [{ id: 1, name: 'Solo Player', handicap_index: 18.0 }] } },
+    ])
+  );
+
+  const res = await fetch(`${app.baseUrl}/season`);
+  const html = await res.text();
+  assert.doesNotMatch(html, /id="season-search"/);
+});
+
+test('Season page shows a search box once the roster passes 8 players', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const roster = Array.from({ length: 9 }, (_, i) => ({ id: i + 1, name: `Player ${i + 1}`, handicap_index: 18.0 }));
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      { match: "type != 'sprint'", result: { rows: [] } },
+      { match: 'FROM rounds r JOIN players p ON p.id = r.player_id', result: { rows: [] } },
+      { match: 'FROM players WHERE is_test_user', result: { rows: roster } },
+    ])
+  );
+
+  const res = await fetch(`${app.baseUrl}/season`);
+  const html = await res.text();
+  assert.match(html, /id="season-search"/);
+  assert.match(html, /data-search="player 1"/);
+  assert.match(html, /data-search="player 9"/);
+});
+
 test('a competition leaderboard excludes test users at the query level', async (t) => {
   const app = await startTestApp();
   t.after(() => app.close());
