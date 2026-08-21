@@ -22,6 +22,7 @@
               <div class="lb-name"><%= s.player_name %><%= s.player_id === currentPlayer.id ? ' (you)' : '' %></div>
             </div>
             <div class="leaderboard-stats" style="flex-wrap:nowrap;gap:1.25rem;">
+              <div class="stat"><span class="stat-label">HCP</span><strong><%= s.handicapIndex === null ? '–' : s.handicapIndex %></strong></div>
               <div class="stat"><span class="stat-label">Played</span><strong><%= s.competitionsPlayed %></strong></div>
               <div class="stat"><span class="stat-label">Points</span><strong<%= i === 0 ? ' style="color:var(--color-gold);"' : '' %>><%= s.totalPoints %></strong></div>
             </div>

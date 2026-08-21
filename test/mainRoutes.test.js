@@ -119,7 +119,7 @@ test('every page footer shows the tagline in full, with "Compete" in the gold ac
     makeQueryMock([
       { match: "type != 'sprint'", result: { rows: [] } },
       { match: 'FROM rounds r JOIN players p ON p.id = r.player_id', result: { rows: [] } },
-      { match: 'SELECT id, name FROM players', result: { rows: [] } },
+      { match: 'FROM players WHERE is_test_user', result: { rows: [] } },
     ])
   );
 
@@ -138,7 +138,7 @@ test('season standings exclude test users at the query level', async (t) => {
   const queryMock = makeQueryMock([
     { match: "type != 'sprint'", result: { rows: [] } },
     { match: 'FROM rounds r JOIN players p ON p.id = r.player_id', result: { rows: [] } },
-    { match: 'SELECT id, name FROM players', result: { rows: [] } },
+    { match: 'FROM players WHERE is_test_user', result: { rows: [] } },
   ]);
   t.mock.method(db, 'query', queryMock);
 
@@ -148,7 +148,7 @@ test('season standings exclude test users at the query level', async (t) => {
   const roundsQuery = queryMock.calls.find((c) => c.text.includes('FROM rounds r JOIN players p ON p.id = r.player_id'));
   assert.ok(roundsQuery.text.includes('is_test_user = FALSE'));
 
-  const rosterQuery = queryMock.calls.find((c) => c.text.includes('SELECT id, name FROM players'));
+  const rosterQuery = queryMock.calls.find((c) => c.text.includes('FROM players WHERE is_test_user'));
   assert.ok(rosterQuery.text.includes('is_test_user = FALSE'));
 });
 
@@ -178,12 +178,12 @@ test('season standings include every registered player, even with zero competiti
       },
     },
     {
-      match: 'SELECT id, name FROM players',
+      match: 'FROM players WHERE is_test_user',
       result: {
         rows: [
-          { id: 10, name: 'Played Once' },
-          { id: 11, name: 'Zulu Newcomer' },
-          { id: 12, name: 'Alpha Newcomer' },
+          { id: 10, name: 'Played Once', handicap_index: 12.3 },
+          { id: 11, name: 'Zulu Newcomer', handicap_index: 28.0 },
+          { id: 12, name: 'Alpha Newcomer', handicap_index: 20.5 },
         ],
       },
     },
@@ -199,6 +199,9 @@ test('season standings include every registered player, even with zero competiti
   assert.match(html, /Zulu Newcomer/);
   assert.match(html, /Alpha Newcomer/);
   assert.match(html, /stat-label">Played<\/span><strong>0<\/strong>/);
+  // Handicap comes from the roster query, not from computeSeasonStandings
+  // (which has no notion of it), and must reach zero-competition players too.
+  assert.match(html, /stat-label">HCP<\/span><strong>28<\/strong>/);
 
   // Zero-point players (never played, tied at 0) are ordered alphabetically
   // after anyone who's actually scored points.
