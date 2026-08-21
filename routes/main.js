@@ -640,6 +640,21 @@ router.get(
   requireLogin,
   asyncHandler(async (req, res) => {
     const { competitions, standings } = await getSeasonStandings();
+
+    // computeSeasonStandings only produces an entry for players who've
+    // actually submitted a round, so anyone registered but yet to play is
+    // otherwise invisible here. Fill in the rest of the (non-test-user)
+    // roster at 0 points / 0 competitions so every member shows up from the
+    // moment they sign up, not just once they've played something.
+    const { rows: allPlayers } = await db.query('SELECT id, name FROM players WHERE is_test_user = FALSE');
+    const seenIds = new Set(standings.map((s) => s.player_id));
+    for (const p of allPlayers) {
+      if (!seenIds.has(p.id)) {
+        standings.push({ player_id: p.id, player_name: p.name, totalPoints: 0, competitionsPlayed: 0 });
+      }
+    }
+    standings.sort((a, b) => b.totalPoints - a.totalPoints || a.player_name.localeCompare(b.player_name));
+
     res.render('season', { standings, competitionsCount: competitions.length });
   })
 );

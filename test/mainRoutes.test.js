@@ -119,6 +119,7 @@ test('every page footer shows the tagline in full, with "Compete" in the gold ac
     makeQueryMock([
       { match: "type != 'sprint'", result: { rows: [] } },
       { match: 'FROM rounds r JOIN players p ON p.id = r.player_id', result: { rows: [] } },
+      { match: 'SELECT id, name FROM players', result: { rows: [] } },
     ])
   );
 
@@ -137,6 +138,7 @@ test('season standings exclude test users at the query level', async (t) => {
   const queryMock = makeQueryMock([
     { match: "type != 'sprint'", result: { rows: [] } },
     { match: 'FROM rounds r JOIN players p ON p.id = r.player_id', result: { rows: [] } },
+    { match: 'SELECT id, name FROM players', result: { rows: [] } },
   ]);
   t.mock.method(db, 'query', queryMock);
 
@@ -145,6 +147,66 @@ test('season standings exclude test users at the query level', async (t) => {
 
   const roundsQuery = queryMock.calls.find((c) => c.text.includes('FROM rounds r JOIN players p ON p.id = r.player_id'));
   assert.ok(roundsQuery.text.includes('is_test_user = FALSE'));
+
+  const rosterQuery = queryMock.calls.find((c) => c.text.includes('SELECT id, name FROM players'));
+  assert.ok(rosterQuery.text.includes('is_test_user = FALSE'));
+});
+
+test('season standings include every registered player, even with zero competitions played', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  const queryMock = makeQueryMock([
+    {
+      match: "type != 'sprint'",
+      result: { rows: [{ id: 1, name: 'August Assault', format: 'stableford', comp_date: new Date('2026-08-01'), type: 'league' }] },
+    },
+    {
+      match: 'FROM rounds r JOIN players p ON p.id = r.player_id',
+      result: {
+        rows: [
+          {
+            competition_id: 1,
+            player_id: 10,
+            player_name: 'Played Once',
+            gross_total: 80,
+            net_total: 72,
+            stableford_points: 34,
+            course_handicap: 8,
+          },
+        ],
+      },
+    },
+    {
+      match: 'SELECT id, name FROM players',
+      result: {
+        rows: [
+          { id: 10, name: 'Played Once' },
+          { id: 11, name: 'Zulu Newcomer' },
+          { id: 12, name: 'Alpha Newcomer' },
+        ],
+      },
+    },
+    { match: 'FROM hole_scores', result: { rows: [] } },
+  ]);
+  t.mock.method(db, 'query', queryMock);
+
+  const res = await fetch(`${app.baseUrl}/season`);
+  assert.equal(res.status, 200);
+  const html = await res.text();
+
+  assert.match(html, /Played Once/);
+  assert.match(html, /Zulu Newcomer/);
+  assert.match(html, /Alpha Newcomer/);
+  assert.match(html, /0 competitions played/);
+
+  // Zero-point players (never played, tied at 0) are ordered alphabetically
+  // after anyone who's actually scored points.
+  const alphaPos = html.indexOf('Alpha Newcomer');
+  const zuluPos = html.indexOf('Zulu Newcomer');
+  const playedPos = html.indexOf('Played Once');
+  assert.ok(playedPos < alphaPos);
+  assert.ok(alphaPos < zuluPos);
 });
 
 test('a competition leaderboard excludes test users at the query level', async (t) => {
