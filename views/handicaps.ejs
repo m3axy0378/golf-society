@@ -28,6 +28,7 @@
         </div>
         <% if (currentPlayer.is_admin) { %>
           <form class="inline-form hcp-edit-form" method="POST" action="/admin/players/<%= h.player_id %>/handicap">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <input type="hidden" name="redirectTo" value="/handicaps">
             <% if (h.trend === 'down') { %><span class="hcp-trend hcp-trend--down" title="Improved since their last round">&darr;</span><% } %>
             <% if (h.trend === 'up') { %><span class="hcp-trend hcp-trend--up" title="Increased since their last round">&uarr;</span><% } %>

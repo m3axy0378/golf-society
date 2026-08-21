@@ -24,6 +24,7 @@
             <div class="muted" style="font-size:0.85rem;margin-top:0.15rem;"><%= p.email %></div>
           </div>
           <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/handicap" style="display:flex;align-items:center;gap:0.4rem;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <label class="muted" style="font-size:0.8rem;" for="hcp-<%= p.id %>">Handicap Index</label>
             <input id="hcp-<%= p.id %>" type="number" step="0.1" name="handicapIndex" value="<%= p.handicap_index %>" style="width:70px;padding:0.25rem 0.4rem;border:1px solid var(--sb-border);border-radius:6px;">
             <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Save</button>
@@ -31,12 +32,15 @@
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
           <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/toggle-admin">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;"><%= p.is_admin ? 'Remove admin' : 'Make admin' %></button>
           </form>
           <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/toggle-test-user">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;"><%= p.is_test_user ? 'Remove test user' : 'Make test user' %></button>
           </form>
           <form class="inline-form" method="POST" action="/admin/players/<%= p.id %>/delete" onsubmit="return confirm('Remove <%= p.name %> and all their scores?');">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="btn-danger" style="padding:0.25rem 0.6rem;">Remove</button>
           </form>
         </div>
@@ -54,6 +58,7 @@
 <div class="card" style="max-width:480px;">
   <h2 class="mt-0">Add a player</h2>
   <form class="stacked" method="POST" action="/admin/players">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label>Name <input type="text" name="name" required></label>
     <label>Email <input type="email" name="email" required></label>
     <label>Starting Handicap Index <input type="number" step="0.1" name="handicapIndex" value="28.0" required></label>
@@ -77,6 +82,7 @@
 <div class="card" style="max-width:480px;">
   <h2 class="mt-0">Society name</h2>
   <form class="stacked" method="POST" action="/admin/settings/society-name">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label>Name shown at the top of the app
       <input type="text" name="societyName" value="<%= societyName %>" required>
     </label>
@@ -87,6 +93,7 @@
 <div class="card" style="max-width:480px;">
   <h2 class="mt-0">Features</h2>
   <form method="POST" action="/admin/settings/pairing-sheet">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.85rem;">
       <input type="checkbox" name="enabled" style="width:auto;margin:0;" <%= pairingSheetEnabled ? 'checked' : '' %>>
       Pairing sheets

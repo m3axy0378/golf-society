@@ -39,6 +39,7 @@ async function startTestApp(router = authRouter) {
     res.locals.societyName = 'Test Golf Society';
     res.locals.baseUrl = 'http://localhost';
     res.locals.currentPath = req.path;
+    res.locals.csrfToken = 'test-csrf-token';
     next();
   });
   app.use('/', router);

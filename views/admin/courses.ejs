@@ -31,6 +31,7 @@
             <a class="btn btn-secondary" style="padding:0.25rem 0.6rem;" href="/admin/courses/<%= c.id %>/edit">Edit</a>
             <form class="inline-form" method="POST" action="/admin/courses/<%= c.id %>/delete"
               onsubmit="return confirm('Delete &quot;<%= c.name %>&quot;? This only works if it isn\'t linked to any competition.');">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button type="submit" class="btn-danger" style="padding:0.25rem 0.6rem;">Delete</button>
             </form>
           </div>

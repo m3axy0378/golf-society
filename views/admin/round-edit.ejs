@@ -11,6 +11,7 @@
 <div class="card" style="max-width:640px;">
   <form method="POST" action="/admin/rounds/<%= round.id %>/edit"
     onsubmit="return confirm('Save this correction? It replaces <%= round.player_name %>\'s saved score for this round.');">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="hole-list">
       <% holes.forEach(h => {
         const prev = holeScores.find(s => s.hole_number === h.hole_number);

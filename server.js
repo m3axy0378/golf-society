@@ -6,6 +6,7 @@ const helmet = require('helmet');
 
 const db = require('./db');
 const asyncHandler = require('./lib/asyncHandler');
+const csrf = require('./lib/csrf');
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.locals.societyName = 'Golf Society';
 app.locals.vapidPublicKey = null;
 app.locals.baseUrl = '';
 app.locals.pairingSheetEnabled = true;
+app.locals.csrfToken = '';
 
 // Appended to /style.css's URL so every deploy gets a distinct URL instead
 // of reusing "/style.css" forever — lets the browser cache it aggressively
@@ -92,6 +94,12 @@ app.use(
     secure: process.env.NODE_ENV === 'production',
   })
 );
+
+// One CSRF token per session, exposed to every view as csrfToken; every POST
+// is then checked against it (form field or X-CSRF-Token header — see
+// lib/csrf.js) before it reaches any route handler.
+app.use(csrf.attachToken);
+app.use(csrf.verifyToken);
 
 // Make sure the schema exists before handling any request (cheap + idempotent,
 // cached per warm serverless instance after the first call).

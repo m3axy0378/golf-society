@@ -71,6 +71,7 @@
     <% } %>
   </div>
   <form class="stacked" method="POST" action="/admin/courses" id="course-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid-2">
       <label>Course name <input type="text" name="name" id="field-name" required></label>
       <label>Tee <input type="text" name="teeName" id="field-teeName" value="White" required></label>

@@ -15,6 +15,7 @@
       Pick a course someone's already added for a previous competition — no need to search again.
     </p>
     <form method="POST" action="/competitions/<%= comp.id %>/add-existing-course" style="display:flex;gap:0.5rem;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <select name="courseId" required style="flex:1;min-width:0;padding:0.55rem 0.7rem;border:1px solid var(--sb-border);border-radius:8px;font-size:1rem;">
         <option value="">— Choose a saved course —</option>
         <% availableCourses.forEach(c => { %>
@@ -61,6 +62,7 @@
         <% clubCourses.forEach(course => { %>
           <form method="POST" action="/competitions/<%= comp.id %>/add-course"
             style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;border:1px solid var(--sb-border);border-radius:8px;padding:0.5rem 0.7rem;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <span style="font-size:0.9rem;"><%= course.name %> (par <%= course.par %>, <%= course.holes %> holes)</span>
             <input type="hidden" name="courseId" value="<%= course.id %>">
             <input type="hidden" name="clubName" value="<%= clubName %>">

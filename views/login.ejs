@@ -7,6 +7,7 @@
     <% if (justReset) { %><div class="success-box">Password updated — log in with your new password.</div><% } %>
     <% if (error) { %><div class="error-box"><%= error %></div><% } %>
     <form class="stacked" method="POST" action="/login">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <label>Email
         <input type="email" name="email" required autofocus>
       </label>

@@ -26,6 +26,7 @@
   <form method="POST" action="/admin/settings/reset-handicaps"
     onsubmit="return confirm('Reset the Handicap Index for all ' + <%= counts.players %> + ' players to ' + this.defaultHandicap.value + '? This can\'t be undone.');"
     style="display:flex;align-items:end;gap:0.75rem;flex-wrap:wrap;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label style="font-size:0.9rem;">
       <span style="display:block;margin-bottom:0.3rem;">Starting Handicap Index</span>
       <input type="number" step="0.1" name="defaultHandicap" value="28.0" required

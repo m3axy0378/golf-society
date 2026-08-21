@@ -9,6 +9,7 @@
     <% if (error) { %><div class="error-box"><%= error %></div><% } %>
 
     <form class="stacked" method="POST" action="/setup">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <label>Society name
         <input type="text" name="societyName" placeholder="e.g. The Fairway Chancers" required>
       </label>

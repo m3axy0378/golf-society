@@ -7,6 +7,11 @@ window.TeeLeaguePush = (function () {
     return 'serviceWorker' in navigator && 'PushManager' in window;
   }
 
+  function csrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : '';
+  }
+
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -40,7 +45,7 @@ window.TeeLeaguePush = (function () {
     });
     await fetch('/push/subscribe', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
       body: JSON.stringify({ subscription: sub }),
     });
     return { ok: true };
@@ -51,7 +56,7 @@ window.TeeLeaguePush = (function () {
     if (sub) {
       await fetch('/push/unsubscribe', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
         body: JSON.stringify({ endpoint: sub.endpoint }),
       });
       await sub.unsubscribe();

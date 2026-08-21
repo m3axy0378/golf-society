@@ -6,6 +6,7 @@
     <h1>Create your account</h1>
     <% if (error) { %><div class="error-box"><%= error %></div><% } %>
     <form class="stacked" method="POST" action="/signup">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <label>Name
         <input type="text" name="name" value="<%= name %>" required autofocus>
       </label>

@@ -9,6 +9,7 @@
     <p class="muted">You'll need to <a href="/admin/courses/new">add a course</a> first.</p>
   <% } else { %>
     <form class="stacked" method="POST" action="/admin/competitions">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <label>Competition name <input type="text" name="name" placeholder="e.g. August Medal" required></label>
       <label>Date to be played by <input type="date" name="compDate" required></label>
       <div style="margin-bottom:1rem;">
