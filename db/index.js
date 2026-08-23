@@ -269,6 +269,70 @@ ALTER TABLE players ADD COLUMN IF NOT EXISTS handicap_confirmed_by_player BOOLEA
 -- submitted round" behaviour, since that's a separate check in
 -- routes/main.js's /profile handler.
 ALTER TABLE players ADD COLUMN IF NOT EXISTS handicap_locked BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Multi-society support. A "society" runs its own competitions independently
+-- of any other society on this deployment; society_members is who belongs to
+-- which, with a per-society admin flag (lib/authMiddleware.js's requireAdmin
+-- checks this, not players.is_admin, so a society admin can't reach into
+-- another society's admin tools). players stays the single global identity
+-- (name/email/handicap/etc.) shared across every society a person belongs to
+-- — handicap in particular is deliberately global, not per-society.
+CREATE TABLE IF NOT EXISTS societies (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  invite_code TEXT NOT NULL UNIQUE,
+  created_by_player_id INTEGER REFERENCES players(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS society_members (
+  id SERIAL PRIMARY KEY,
+  society_id INTEGER NOT NULL REFERENCES societies(id) ON DELETE CASCADE,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  is_society_admin BOOLEAN NOT NULL DEFAULT FALSE,
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(society_id, player_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_society_members_player_id ON society_members(player_id);
+
+-- A competition belongs to exactly one society. Courses stay global/shared —
+-- a real golf course isn't owned by one society, and different societies will
+-- legitimately play the same one — so created_by_society_id here is
+-- provenance only, never used to scope reads.
+ALTER TABLE competitions ADD COLUMN IF NOT EXISTS society_id INTEGER REFERENCES societies(id);
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS created_by_society_id INTEGER REFERENCES societies(id);
+
+CREATE INDEX IF NOT EXISTS idx_competitions_society_id ON competitions(society_id);
+
+-- One-time backfill: everything that exists today predates societies, so it
+-- all belongs together in a single "default" society, with every existing
+-- player added as a member (carrying over their global is_admin as that
+-- society's initial is_society_admin) and every existing competition
+-- assigned to it. Guarded so this only ever runs once, the first time this
+-- deploys against a database with no societies yet. The invite code is built
+-- from md5(random()) rather than a pgcrypto function like gen_random_bytes,
+-- since extensions aren't guaranteed to be installable under every managed
+-- Postgres provider's app-level connection user.
+DO $$
+DECLARE
+  default_society_id INTEGER;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM societies) THEN
+    INSERT INTO societies (name, invite_code, created_by_player_id)
+    VALUES (
+      COALESCE((SELECT value FROM settings WHERE key = 'society_name'), 'Tee League'),
+      substr(md5(random()::text || clock_timestamp()::text), 1, 12),
+      (SELECT id FROM players ORDER BY is_admin DESC, id ASC LIMIT 1)
+    )
+    RETURNING id INTO default_society_id;
+
+    INSERT INTO society_members (society_id, player_id, is_society_admin)
+    SELECT default_society_id, id, is_admin FROM players;
+
+    UPDATE competitions SET society_id = default_society_id WHERE society_id IS NULL;
+  END IF;
+END $$;
 `;
 
 let readyPromise = null;
