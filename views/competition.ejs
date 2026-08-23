@@ -27,7 +27,7 @@
   </div>
 </div>
 
-<% if (currentPlayer.is_admin) { %>
+<% if (currentPlayer.is_society_admin) { %>
   <div class="comp-fact-actions">
     <% if (pairingSheetEnabled) { %><a class="btn-secondary" href="/admin/competitions/<%= comp.id %>/pairings">Pairing sheet</a><% } %>
     <form method="POST" action="/admin/competitions/<%= comp.id %>/notify" class="inline-form"
@@ -88,7 +88,7 @@
     <a class="btn" target="_blank" rel="noopener" href="<%= comp.entry_fee_link %>">Pay entry fee</a>
   </div>
 
-  <% if (currentPlayer.is_admin) { %>
+  <% if (currentPlayer.is_society_admin) { %>
     <div class="card">
       <h2 class="mt-0" style="font-size:1.05rem;">Entry fee payments</h2>
       <% if (allEntries.length === 0) { %>
@@ -544,7 +544,7 @@
           </div>
           <div style="margin-top:6px;font-size:0.75rem;">
             <a class="muted" href="/rounds/<%= r.id %>/scorecard">Scorecard</a>
-            <% if (currentPlayer.is_admin) { %> · <a class="muted" href="/admin/rounds/<%= r.id %>/edit">Edit</a><% } %>
+            <% if (currentPlayer.is_society_admin) { %> · <a class="muted" href="/admin/rounds/<%= r.id %>/edit">Edit</a><% } %>
             <% if (comp.entry_fee_enabled) {
               const entry = allEntries.find(e => e.player_id === r.player_id);
             %>
@@ -560,7 +560,7 @@
               <div class="lb-pending-name"><%= e.player_name %></div>
               <div class="lb-pending-sub">Entered, not yet played</div>
             </div>
-            <% if (currentPlayer.is_admin) { %>
+            <% if (currentPlayer.is_society_admin) { %>
               <button type="button" class="btn-secondary entry-remove" data-entry-id="<%= e.id %>" style="padding:0.2rem 0.55rem;font-size:0.78rem;">Remove</button>
             <% } else { %>
               <span class="lb-pending-dash">&mdash;</span>

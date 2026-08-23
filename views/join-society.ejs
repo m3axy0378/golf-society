@@ -1,0 +1,20 @@
+<%- include('partials/header', { title: 'Join ' + society.name, mainClass: 'scoreboard-view' }) %>
+
+<div class="comp-header">
+  <h1 class="comp-title" style="text-transform:none;font-size:1.75rem;">Join <%= society.name %>?</h1>
+  <p class="comp-meta">You'll be able to enter its competitions and see its leaderboards, Season standings and Order of Merit.</p>
+</div>
+
+<% if (error) { %><div class="error-box" style="margin:0.75rem 20px;"><%= error %></div><% } %>
+
+<div class="card" style="max-width:480px;">
+  <form class="stacked" method="POST" action="/join/<%= code %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button type="submit">Join <%= society.name %></button>
+  </form>
+  <p class="muted" style="font-size:0.85rem;">
+    <a class="sb-link" href="/societies">Not this one? See your other societies</a>
+  </p>
+</div>
+
+<%- include('partials/footer') %>

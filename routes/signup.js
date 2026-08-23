@@ -34,9 +34,28 @@ router.post(
       const player = rows[0];
       req.session.playerId = player.id;
       req.session.isAdmin = !!player.is_admin;
+
+      // Arrived via an invite link (GET /join/:code stashed the code here
+      // before sending them to sign up) — join that society right away so
+      // they land on a real dashboard instead of the "create or join a
+      // society" gate every other brand-new signup hits.
+      const pendingInviteCode = req.session.pendingInviteCode;
+      if (pendingInviteCode) {
+        delete req.session.pendingInviteCode;
+        const { rows: societyRows } = await db.query('SELECT id FROM societies WHERE invite_code = $1', [pendingInviteCode]);
+        if (societyRows[0]) {
+          await db.query(
+            'INSERT INTO society_members (society_id, player_id, is_society_admin) VALUES ($1, $2, FALSE) ON CONFLICT (society_id, player_id) DO NOTHING',
+            [societyRows[0].id, player.id]
+          );
+          req.session.currentSocietyId = societyRows[0].id;
+        }
+      }
+
       // The server.js onboarding gate redirects here to /welcome/handicap
       // before this destination is ever reached, since handicap_confirmed_by_player
-      // is FALSE — this is just where they land once that's done.
+      // is FALSE — this is just where they land once that's done (or, with
+      // no pending invite and no society yet, to /societies instead).
       res.redirect('/dashboard?enableNotifications=1');
     } catch (e) {
       if (e.code === '23505') {

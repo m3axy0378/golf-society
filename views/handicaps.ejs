@@ -29,7 +29,7 @@
             <% } %>
           </div>
         </div>
-        <% if (currentPlayer.is_admin) { %>
+        <% if (currentPlayer.is_society_admin) { %>
           <form class="inline-form hcp-edit-form" method="POST" action="/admin/players/<%= h.player_id %>/handicap">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <input type="hidden" name="redirectTo" value="/handicaps">
@@ -48,7 +48,7 @@
       </div>
     <% }) %>
   </div>
-  <% if (currentPlayer.is_admin) { %>
+  <% if (currentPlayer.is_society_admin) { %>
     <p class="muted" style="font-size:0.8rem;margin:0.75rem 20px 0;">
       Edits here hold until a player reaches <%= MIN_ROUNDS_FOR_AUTO_HANDICAP %> rounds, then it's recalculated
       automatically after every one from then on.

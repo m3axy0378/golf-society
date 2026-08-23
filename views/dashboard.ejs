@@ -51,7 +51,7 @@
   <% } %>
 </div>
 
-<% if (currentPlayer.is_admin) { %>
+<% if (currentPlayer.is_society_admin) { %>
   <div style="padding:10px 20px 0;">
     <a class="btn" href="/admin/competitions/new">+ New competition</a>
   </div>
@@ -61,7 +61,7 @@
   <div class="sb-empty">
     <%= showAll ? 'NO COMPETITIONS YET' : 'NO OPEN COMPETITIONS' %>
   </div>
-  <% if (currentPlayer.is_admin && !showAll) { %>
+  <% if (currentPlayer.is_society_admin && !showAll) { %>
     <p class="muted" style="padding:0 20px;">Start by <a href="/admin/courses/new">adding a course</a>, then create your first competition.</p>
   <% } %>
 <% } else { %>

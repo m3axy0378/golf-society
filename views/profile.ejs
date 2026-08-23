@@ -7,7 +7,7 @@
   </h1>
   <p class="comp-meta">
     <%= player.email %>
-    <% if (currentPlayer.is_admin) { %> · <a class="sb-link" href="/admin/players">Admin</a><% } %>
+    <% if (currentPlayer.is_society_admin) { %> · <a class="sb-link" href="/admin/players">Admin</a><% } %>
   </p>
   <% if (player.is_test_user) { %>
     <p class="muted" style="font-size:0.85rem;margin:0.35rem 0 0;">
@@ -232,16 +232,33 @@
 
 <div class="card">
   <h2 class="mt-0" style="font-size:1.05rem;">Invite a friend</h2>
-  <p class="muted" style="font-size:0.85rem;">Know someone who'd want to join the society? Send them this link to sign up.</p>
+  <p class="muted" style="font-size:0.85rem;">Know someone who'd want to join <%= currentSociety.society_name %>? Send them this link — it takes them straight there.</p>
   <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-    <input type="text" readonly id="invite-link" value="<%= baseUrl %>/signup" onclick="this.select()"
+    <input type="text" readonly id="invite-link" value="<%= baseUrl %>/join/<%= currentSociety.invite_code %>" onclick="this.select()"
       style="flex:1;min-width:0;padding:0.55rem 0.7rem;border:1px solid var(--sb-border);border-radius:8px;font-size:0.9rem;">
     <button type="button" class="btn-secondary" id="invite-copy">Copy link</button>
   </div>
   <a class="btn-secondary" target="_blank" rel="noopener" style="margin-top:0.6rem;display:inline-block;"
-    href="https://wa.me/?text=<%- encodeURIComponent(`🏌️ Come play golf with us on Tee League — sign up here: ${baseUrl}/signup`) %>">
+    href="https://wa.me/?text=<%- encodeURIComponent(`🏌️ Come play golf with us on Tee League — join ${currentSociety.society_name} here: ${baseUrl}/join/${currentSociety.invite_code}`) %>">
     Share to WhatsApp
   </a>
+  <% if (currentPlayer.is_society_admin) { %>
+    <form method="POST" action="/societies/invite-code/regenerate" style="margin-top:0.6rem;"
+      onsubmit="return confirm('Regenerate the invite link? The old one will stop working immediately.');">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="muted" style="background:none;border:none;padding:0;font-size:0.8rem;text-decoration:underline;cursor:pointer;">
+        Regenerate link
+      </button>
+    </form>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2 class="mt-0" style="font-size:1.05rem;">Societies</h2>
+  <p class="muted" style="font-size:0.85rem;">
+    You're in <%= mySocieties.length %> <%= mySocieties.length === 1 ? 'society' : 'societies' %> (currently viewing
+    <%= currentSociety.society_name %>). <a class="sb-link" href="/societies">Switch, join another, or create a new one</a>.
+  </p>
 </div>
 
 <script>

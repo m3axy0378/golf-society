@@ -136,7 +136,7 @@ app.use(
         // it, this has no behavioral effect (every existing player's society
         // membership was backfilled with is_society_admin = their is_admin).
         const { rows: memberships } = await db.query(
-          `SELECT sm.society_id, sm.is_society_admin, s.name AS society_name
+          `SELECT sm.society_id, sm.is_society_admin, s.name AS society_name, s.invite_code
            FROM society_members sm
            JOIN societies s ON s.id = sm.society_id
            WHERE sm.player_id = $1
@@ -198,6 +198,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// A logged-in player with zero societies (a self-signup with no invite code)
+// can't do anything useful yet — every page from here on assumes a current
+// society. Send them to create or join one instead. Exempts /join/:code
+// itself (so following an invite link works), /societies (the create form
+// and its POST), and /logout.
+app.use((req, res, next) => {
+  const player = res.locals.currentPlayer;
+  const exempt = req.path === '/logout' || req.path === '/societies' || req.path.startsWith('/join/');
+  if (player && res.locals.mySocieties.length === 0 && !exempt) {
+    return res.redirect('/societies');
+  }
+  next();
+});
+
 app.get('/', (req, res) => {
   if (!req.session.playerId) return res.redirect('/login');
   res.redirect('/dashboard');
@@ -207,6 +221,7 @@ app.use('/', require('./routes/setup'));
 app.use('/', require('./routes/auth'));
 app.use('/', require('./routes/signup'));
 app.use('/', require('./routes/onboarding'));
+app.use('/', require('./routes/societies'));
 app.use('/', require('./routes/push'));
 app.use('/', require('./routes/main'));
 app.use('/admin', require('./routes/admin'));

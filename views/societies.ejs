@@ -1,0 +1,57 @@
+<%- include('partials/header', { title: 'Societies', mainClass: 'scoreboard-view' }) %>
+
+<div class="comp-header">
+  <h1 class="comp-title" style="text-transform:none;font-size:1.75rem;">Societies</h1>
+  <% if (mySocieties.length === 0) { %>
+    <p class="comp-meta">
+      You're not part of a society yet. Create one to start running your own competitions, or join one with an
+      invite link or code from its admin.
+    </p>
+  <% } else { %>
+    <p class="comp-meta">Switch between the societies you belong to, or add another.</p>
+  <% } %>
+</div>
+
+<% if (error) { %><div class="error-box" style="margin:0.75rem 20px;"><%= error %></div><% } %>
+
+<% if (mySocieties.length > 0) { %>
+  <div class="card">
+    <h2 class="mt-0" style="font-size:1.05rem;">My societies</h2>
+    <ul class="list-plain">
+      <% mySocieties.forEach(m => { %>
+        <li style="display:flex;justify-content:space-between;align-items:center;">
+          <span><%= m.society_name %><% if (currentSociety && m.society_id === currentSociety.society_id) { %> <span class="muted">(current)</span><% } %></span>
+          <% if (!currentSociety || m.society_id !== currentSociety.society_id) { %>
+            <form method="POST" action="/societies/switch">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="societyId" value="<%= m.society_id %>">
+              <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Switch to this one</button>
+            </form>
+          <% } %>
+        </li>
+      <% }) %>
+    </ul>
+  </div>
+<% } %>
+
+<div class="card" style="max-width:480px;">
+  <h2 class="mt-0" style="font-size:1.05rem;">Create a new society</h2>
+  <form class="stacked" method="POST" action="/societies">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Society name <input type="text" name="name" required autofocus></label>
+    <button type="submit">Create society</button>
+  </form>
+  <p class="muted" style="font-size:0.85rem;">You'll be its first admin, with your own competitions, leaderboards and
+    Order of Merit — separate from any other society you're in.</p>
+</div>
+
+<div class="card" style="max-width:480px;">
+  <h2 class="mt-0" style="font-size:1.05rem;">Join with a code</h2>
+  <form class="stacked" method="POST" action="/societies/join-by-code">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Invite code <input type="text" name="code" required placeholder="From an invite link, or a code an admin gave you"></label>
+    <button type="submit" class="btn-secondary">Join</button>
+  </form>
+</div>
+
+<%- include('partials/footer') %>

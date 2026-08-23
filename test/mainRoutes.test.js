@@ -49,9 +49,16 @@ async function startTestApp({ isAdmin = false } = {}) {
       email: 'test@example.com',
       handicap_index: 18.4,
       is_admin: isAdmin,
+      is_society_admin: isAdmin,
       dashboard_intro_seen: true, // skips the first-visit hero + its UPDATE query
     };
-    res.locals.currentSociety = { society_id: 1, is_society_admin: isAdmin, society_name: 'Test Golf Society' };
+    res.locals.currentSociety = {
+      society_id: 1,
+      is_society_admin: isAdmin,
+      society_name: 'Test Golf Society',
+      invite_code: 'test-invite-code',
+    };
+    res.locals.mySocieties = [res.locals.currentSociety];
     res.locals.societyName = 'Test Golf Society';
     res.locals.vapidPublicKey = null;
     res.locals.baseUrl = 'http://localhost';
@@ -377,7 +384,7 @@ test('POST /profile rejects a self-edit once handicap_locked is set, even with z
   assert.ok(!queryMock.calls.some((c) => c.text.includes('UPDATE players SET handicap_index')));
 });
 
-test('GET /profile shows an invite link pointing at /signup on this host', async (t) => {
+test('GET /profile shows an invite link pointing at the current society\'s join code', async (t) => {
   const app = await startTestApp();
   t.after(() => app.close());
 
@@ -396,5 +403,5 @@ test('GET /profile shows an invite link pointing at /signup on this host', async
   const html = await res.text();
 
   assert.match(html, /Invite a friend/);
-  assert.match(html, /id="invite-link"[^>]*value="http:\/\/localhost\/signup"/);
+  assert.match(html, /id="invite-link"[^>]*value="http:\/\/localhost\/join\/test-invite-code"/);
 });
