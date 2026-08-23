@@ -106,6 +106,15 @@ function attachLeaderboardDisplay(format, ranked) {
   });
 }
 
+// A competition belongs to exactly one society — loading it scoped to the
+// viewer's current society means a member of one society can never view,
+// enter, score, or add a course to another society's competition just by
+// guessing its numeric id in the URL.
+async function getCompetitionForSociety(id, societyId) {
+  const { rows } = await db.query('SELECT * FROM competitions WHERE id = $1 AND society_id = $2', [id, societyId]);
+  return rows[0] || null;
+}
+
 async function getRoundsForCompetition(competitionId) {
   const { rows } = await db.query(
     `SELECT r.*, p.name AS player_name, co.name AS course_name
@@ -129,15 +138,21 @@ function ordinalSuffix(n) {
 }
 
 // Shared by /dashboard (one player's rank) and /season (the full table) so
-// both always agree on the same numbers.
-async function getSeasonStandings() {
+// both always agree on the same numbers. Scoped to one society's
+// competitions/roster — a player who belongs to more than one society sees a
+// separate Order of Merit for each, matching how competitions themselves are
+// society-scoped (unlike Handicap Index, which is deliberately global).
+async function getSeasonStandings(societyId) {
   const { rows: competitions } = await db.query(
-    "SELECT id, name, format, comp_date, type FROM competitions WHERE type != 'sprint' ORDER BY comp_date"
+    "SELECT id, name, format, comp_date, type FROM competitions WHERE type != 'sprint' AND society_id = $1 ORDER BY comp_date",
+    [societyId]
   );
   const { rows: allRoundsRaw } = await db.query(
     `SELECT r.*, p.name AS player_name
      FROM rounds r JOIN players p ON p.id = r.player_id
-     WHERE p.is_test_user = FALSE`
+     JOIN competitions c ON c.id = r.competition_id
+     WHERE p.is_test_user = FALSE AND c.society_id = $1`,
+    [societyId]
   );
   const allRounds = await attachHoleData(allRoundsRaw);
   const standings = computeSeasonStandings(competitions, allRounds);
@@ -148,7 +163,10 @@ async function getSeasonStandings() {
   // dashboard's Order of Merit widget. Fill in the rest of the
   // (non-test-user) roster at 0 points / 0 competitions so every member
   // shows up from the moment they sign up.
-  const { rows: allPlayers } = await db.query('SELECT id, name, handicap_index FROM players WHERE is_test_user = FALSE');
+  const { rows: allPlayers } = await db.query(
+    'SELECT id, name, handicap_index FROM players WHERE is_test_user = FALSE AND id IN (SELECT player_id FROM society_members WHERE society_id = $1)',
+    [societyId]
+  );
   const playersById = new Map(allPlayers.map((p) => [p.id, p]));
   const seenIds = new Set(standings.map((s) => s.player_id));
   for (const p of allPlayers) {
@@ -177,7 +195,9 @@ router.get(
       `SELECT c.*,
         (SELECT COUNT(*) FROM rounds r WHERE r.competition_id = c.id) AS rounds_count
        FROM competitions c
-       ORDER BY c.comp_date ASC`
+       WHERE c.society_id = $1
+       ORDER BY c.comp_date ASC`,
+      [res.locals.currentSociety.society_id]
     );
     const filtered = showAll ? allCompetitions : allCompetitions.filter((c) => c.status === 'open');
 
@@ -195,7 +215,7 @@ router.get(
     );
     const myEntriesByComp = new Map(myEntries.map((e) => [e.competition_id, e]));
 
-    const { standings } = await getSeasonStandings();
+    const { standings } = await getSeasonStandings(res.locals.currentSociety.society_id);
     const myIndex = standings.findIndex((s) => s.player_id === req.session.playerId);
     const oom =
       myIndex === -1
@@ -222,8 +242,7 @@ router.get(
   '/competitions/:id',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
-    const comp = compRows[0];
+    const comp = await getCompetitionForSociety(req.params.id, res.locals.currentSociety.society_id);
     if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
 
     // Picking a course from the "other saved courses" part of the picker
@@ -273,9 +292,10 @@ router.get(
     );
     const myRound = myRoundRows[0] || null;
 
-    const { rows: markers } = await db.query('SELECT id, name FROM players WHERE id != $1 ORDER BY name', [
-      req.session.playerId,
-    ]);
+    const { rows: markers } = await db.query(
+      'SELECT id, name FROM players WHERE id != $1 AND id IN (SELECT player_id FROM society_members WHERE society_id = $2) ORDER BY name',
+      [req.session.playerId, res.locals.currentSociety.society_id]
+    );
 
     let myHoleScores = [];
     if (myRound) {
@@ -376,8 +396,7 @@ router.post(
   '/competitions/:id/enter',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
-    const comp = compRows[0];
+    const comp = await getCompetitionForSociety(req.params.id, res.locals.currentSociety.society_id);
     if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
     if (comp.status === 'closed') {
       return res.status(400).render('error', { message: 'This competition is closed for entry.' });
@@ -396,8 +415,7 @@ router.post(
   '/competitions/:id/score',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
-    const comp = compRows[0];
+    const comp = await getCompetitionForSociety(req.params.id, res.locals.currentSociety.society_id);
     if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
     if (comp.status === 'closed') {
       return res.status(400).render('error', { message: 'This competition is closed for score entry.' });
@@ -422,7 +440,10 @@ router.post(
       return res.status(400).render('error', { message: 'Please choose which course you played.' });
     }
 
-    const { rows: otherPlayers } = await db.query('SELECT id FROM players WHERE id != $1', [req.session.playerId]);
+    const { rows: otherPlayers } = await db.query(
+      'SELECT id FROM players WHERE id != $1 AND id IN (SELECT player_id FROM society_members WHERE society_id = $2)',
+      [req.session.playerId, res.locals.currentSociety.society_id]
+    );
     let markerId = null;
     if (otherPlayers.length > 0) {
       markerId = parseInt(req.body.markerId, 10);
@@ -527,8 +548,7 @@ router.get(
   '/competitions/:id/add-course',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
-    const comp = compRows[0];
+    const comp = await getCompetitionForSociety(req.params.id, res.locals.currentSociety.society_id);
     if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
     if (comp.status === 'closed') {
       return res.status(400).render('error', { message: 'This competition is closed, so no more courses can be added.' });
@@ -575,8 +595,7 @@ router.post(
   '/competitions/:id/add-existing-course',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
-    const comp = compRows[0];
+    const comp = await getCompetitionForSociety(req.params.id, res.locals.currentSociety.society_id);
     if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
     if (comp.status === 'closed') {
       return res.status(400).render('error', { message: 'This competition is closed, so no more courses can be added.' });
@@ -601,8 +620,7 @@ router.post(
   '/competitions/:id/add-course',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: compRows } = await db.query('SELECT * FROM competitions WHERE id = $1', [req.params.id]);
-    const comp = compRows[0];
+    const comp = await getCompetitionForSociety(req.params.id, res.locals.currentSociety.society_id);
     if (!comp) return res.status(404).render('error', { message: 'Competition not found.' });
     if (comp.status === 'closed') {
       return res.status(400).render('error', { message: 'This competition is closed, so no more courses can be added.' });
@@ -665,7 +683,7 @@ router.get(
   '/season',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { competitions, standings } = await getSeasonStandings();
+    const { competitions, standings } = await getSeasonStandings(res.locals.currentSociety.society_id);
     res.render('season', { standings, competitionsCount: competitions.length });
   })
 );
@@ -806,7 +824,15 @@ router.get(
   '/handicaps',
   requireLogin,
   asyncHandler(async (req, res) => {
-    const { rows: players } = await db.query('SELECT id, name, handicap_index FROM players WHERE is_test_user = FALSE ORDER BY name');
+    const { rows: players } = await db.query(
+      'SELECT id, name, handicap_index FROM players WHERE is_test_user = FALSE AND id IN (SELECT player_id FROM society_members WHERE society_id = $1) ORDER BY name',
+      [res.locals.currentSociety.society_id]
+    );
+    // Deliberately NOT scoped to this society — Handicap Index itself is
+    // global (lib/handicap.js's updatePlayerHandicap averages a player's
+    // last 8 rounds across every society they belong to), so the trend/
+    // rounds-counted figures shown here must be computed the same way, or
+    // they'd disagree with the actual handicap_index value above them.
     const { rows: roundRows } = await db.query(
       `SELECT r.player_id, r.gross_total, r.handicap_index_used, r.submitted_at, co.course_rating, co.slope_rating
        FROM rounds r

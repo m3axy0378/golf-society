@@ -51,6 +51,7 @@ async function startTestApp({ isAdmin = false } = {}) {
       is_admin: isAdmin,
       dashboard_intro_seen: true, // skips the first-visit hero + its UPDATE query
     };
+    res.locals.currentSociety = { society_id: 1, is_society_admin: isAdmin, society_name: 'Test Golf Society' };
     res.locals.societyName = 'Test Golf Society';
     res.locals.vapidPublicKey = null;
     res.locals.baseUrl = 'http://localhost';
@@ -312,7 +313,7 @@ test('a competition leaderboard excludes test users at the query level', async (
     { match: 'FROM competition_courses cc', result: { rows: [] } },
     { match: 'WHERE id NOT IN', result: { rows: [] } },
     { match: 'm.name AS marker_name', result: { rows: [] } },
-    { match: 'WHERE id != $1 ORDER BY name', result: { rows: [] } },
+    { match: 'FROM players WHERE id != $1', result: { rows: [] } },
     { match: 'is_test_user = FALSE', result: { rows: [] } },
     { match: 'FROM entries e', result: { rows: [] } },
     { match: 'FROM pairing_groups pg', result: { rows: [] } },
