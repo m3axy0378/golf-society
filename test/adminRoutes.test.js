@@ -34,15 +34,22 @@ function makeQueryMock(rules) {
   return fn;
 }
 
+// Fixed id for the fake admin's "current society" throughout this file, so
+// tests can assert on it wherever a route now threads societyId into a query.
+const SOCIETY_ID = 100;
+
 // Spins up a throwaway Express app with just the admin router mounted (and a
-// fake logged-in admin session), on a random free port. Callers get back the
-// base URL and a teardown function.
+// fake logged-in society-admin session, current society already resolved —
+// see server.js's real currentPlayer middleware, which this stands in for),
+// on a random free port. Callers get back the base URL and a teardown function.
 async function startTestApp({ pairingSheetEnabled = true } = {}) {
   const app = express();
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use((req, res, next) => {
     req.session = { playerId: 1, isAdmin: true };
+    res.locals.currentPlayer = { id: 1, is_admin: true, is_society_admin: true };
+    res.locals.currentSociety = { society_id: SOCIETY_ID, is_society_admin: true, society_name: 'Test Society' };
     res.locals.pairingSheetEnabled = pairingSheetEnabled;
     next();
   });
@@ -77,6 +84,12 @@ test('bulk-clear-scores deletes rounds/entries for the given ids and recalculate
     1: [80, 82, 84, 86].map((gross_total) => ({ gross_total, course_rating: 70, slope_rating: 113 })),
     2: [],
   };
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([{ match: 'SELECT id FROM competitions WHERE society_id', result: { rows: [{ id: 10 }, { id: 20 }] } }])
+  );
+
   const clientQuery = makeQueryMock([
     { match: 'SELECT DISTINCT player_id FROM rounds WHERE competition_id = ANY', result: { rows: [{ player_id: 1 }, { player_id: 2 }] } },
     { match: 'DELETE FROM rounds WHERE competition_id = ANY', result: { rows: [] } },
@@ -206,7 +219,10 @@ test('reset-handicaps applies the given value, falling back to 28.0 when invalid
     redirect: 'manual',
   });
 
-  assert.deepEqual(queryMock.calls.map((c) => c.params), [[15.5], [28.0]]);
+  assert.deepEqual(queryMock.calls.map((c) => c.params), [
+    [15.5, SOCIETY_ID],
+    [28.0, SOCIETY_ID],
+  ]);
 });
 
 test('saving a pairing sheet only stores players who are actually entered, grouped and timed correctly', async (t) => {
@@ -278,7 +294,8 @@ test('editing a player updates name and email and redirects back with a confirma
   t.after(() => app.close());
 
   const queryMock = makeQueryMock([
-    { match: 'SELECT * FROM players ORDER BY name', result: { rows: [] } },
+    { match: 'JOIN society_members sm', result: { rows: [] } },
+    { match: 'SELECT society_id FROM society_members WHERE player_id', result: { rows: [{ society_id: SOCIETY_ID }] } },
     { match: 'UPDATE players SET name', result: { rows: [] } },
   ]);
   t.mock.method(db, 'query', queryMock);
@@ -302,7 +319,8 @@ test('resetting a player\'s password hashes it and clears any pending self-servi
   t.after(() => app.close());
 
   const queryMock = makeQueryMock([
-    { match: 'SELECT * FROM players ORDER BY name', result: { rows: [] } },
+    { match: 'JOIN society_members sm', result: { rows: [] } },
+    { match: 'SELECT society_id FROM society_members WHERE player_id', result: { rows: [{ society_id: SOCIETY_ID }] } },
     { match: 'UPDATE players SET password_hash', result: { rows: [] } },
   ]);
   t.mock.method(db, 'query', queryMock);
@@ -329,7 +347,10 @@ test('resetting a player\'s password rejects anything under 8 characters, withou
   const app = await startTestApp();
   t.after(() => app.close());
 
-  const queryMock = makeQueryMock([{ match: 'SELECT * FROM players ORDER BY name', result: { rows: [] } }]);
+  const queryMock = makeQueryMock([
+    { match: 'JOIN society_members sm', result: { rows: [] } },
+    { match: 'SELECT society_id FROM society_members WHERE player_id', result: { rows: [{ society_id: SOCIETY_ID }] } },
+  ]);
   t.mock.method(db, 'query', queryMock);
 
   await fetch(`${app.baseUrl}/admin/players/7/reset-password`, {
@@ -648,7 +669,8 @@ test('merging two players moves everything onto the kept player and deletes the 
     db,
     'query',
     makeQueryMock([
-      { match: 'SELECT * FROM players ORDER BY name', result: { rows: [] } },
+      { match: 'JOIN society_members sm', result: { rows: [] } },
+      { match: 'SELECT society_id FROM society_members WHERE player_id', result: { rows: [{ society_id: SOCIETY_ID }] } },
       { match: 'SELECT c.name FROM rounds r1', result: { rows: [] } }, // no conflicting competition
     ])
   );
@@ -693,7 +715,8 @@ test('merging is rejected if both players have a round in the same competition, 
     db,
     'query',
     makeQueryMock([
-      { match: 'SELECT * FROM players ORDER BY name', result: { rows: [] } },
+      { match: 'JOIN society_members sm', result: { rows: [] } },
+      { match: 'SELECT society_id FROM society_members WHERE player_id', result: { rows: [{ society_id: SOCIETY_ID }] } },
       { match: 'SELECT c.name FROM rounds r1', result: { rows: [{ name: 'August Assault' }] } },
     ])
   );
@@ -714,7 +737,7 @@ test('merging a player with themselves is rejected before any conflict check or 
   const app = await startTestApp();
   t.after(() => app.close());
 
-  const queryMock = makeQueryMock([{ match: 'SELECT * FROM players ORDER BY name', result: { rows: [] } }]);
+  const queryMock = makeQueryMock([{ match: 'JOIN society_members sm', result: { rows: [] } }]);
   t.mock.method(db, 'query', queryMock);
   const withTransactionMock = t.mock.method(db, 'withTransaction', async () => {
     throw new Error('should not start a transaction merging a player with themselves');

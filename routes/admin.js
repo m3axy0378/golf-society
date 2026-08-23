@@ -13,10 +13,36 @@ const router = express.Router();
 router.use(requireAdmin);
 
 // ---- Players ----
+// Every player-management route below only ever lists/acts on players who
+// are members of the admin's own current society (see server.js's
+// res.locals.currentSociety) — never every player on the deployment. The
+// "Admin" badge/toggle shown here is that society's is_society_admin, not
+// the player's global players.is_admin (which no longer gates anything —
+// see lib/authMiddleware.js's requireAdmin).
+async function loadSocietyPlayers(societyId) {
+  const { rows } = await db.query(
+    `SELECT p.id, p.name, p.email, p.handicap_index, p.is_test_user, sm.is_society_admin AS is_admin
+     FROM players p
+     JOIN society_members sm ON sm.player_id = p.id AND sm.society_id = $1
+     ORDER BY p.name`,
+    [societyId]
+  );
+  return rows;
+}
+
+// Every society a player belongs to. Used to refuse edits to global identity
+// data (name/email/password) for a player who's also a member of some other
+// society — that data is shared with them too, and is outside this admin's
+// reach (see the plan's "admin reach across societies" decision).
+async function getPlayerSocietyIds(playerId) {
+  const { rows } = await db.query('SELECT society_id FROM society_members WHERE player_id = $1', [playerId]);
+  return rows.map((r) => r.society_id);
+}
+
 router.get(
   '/players',
   asyncHandler(async (req, res) => {
-    const { rows: players } = await db.query('SELECT * FROM players ORDER BY name');
+    const players = await loadSocietyPlayers(res.locals.currentSociety.society_id);
     let message = null;
     if (req.query.added) message = 'Player added.';
     else if (req.query.updated) message = 'Player details updated.';
@@ -30,7 +56,8 @@ router.post(
   '/players',
   asyncHandler(async (req, res) => {
     const { name, email, password, handicapIndex, isAdmin, isTestUser } = req.body;
-    const { rows: players } = await db.query('SELECT * FROM players ORDER BY name');
+    const societyId = res.locals.currentSociety.society_id;
+    const players = await loadSocietyPlayers(societyId);
 
     if (!name || !email || !password) {
       return res.render('admin/players', { players, error: 'Name, email and password are all required.', message: null });
@@ -38,10 +65,17 @@ router.post(
 
     try {
       const hash = bcrypt.hashSync(password, 10);
-      await db.query(
-        'INSERT INTO players (name, email, password_hash, handicap_index, is_admin, is_test_user) VALUES ($1, $2, $3, $4, $5, $6)',
-        [name.trim(), email.trim().toLowerCase(), hash, parseFloat(handicapIndex) || 28.0, !!isAdmin, !!isTestUser]
-      );
+      await db.withTransaction(async (client) => {
+        const { rows } = await client.query(
+          'INSERT INTO players (name, email, password_hash, handicap_index, is_test_user) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+          [name.trim(), email.trim().toLowerCase(), hash, parseFloat(handicapIndex) || 28.0, !!isTestUser]
+        );
+        await client.query('INSERT INTO society_members (society_id, player_id, is_society_admin) VALUES ($1, $2, $3)', [
+          societyId,
+          rows[0].id,
+          !!isAdmin,
+        ]);
+      });
       res.redirect('/admin/players?added=1');
     } catch (e) {
       if (e.code === '23505') {
@@ -56,7 +90,20 @@ router.post(
   '/players/:id/edit',
   asyncHandler(async (req, res) => {
     const { name, email } = req.body;
-    const { rows: players } = await db.query('SELECT * FROM players ORDER BY name');
+    const societyId = res.locals.currentSociety.society_id;
+    const players = await loadSocietyPlayers(societyId);
+
+    const societyIds = await getPlayerSocietyIds(req.params.id);
+    if (!societyIds.includes(societyId)) {
+      return res.status(404).render('error', { message: 'Player not found.' });
+    }
+    if (societyIds.length > 1) {
+      return res.render('admin/players', {
+        players,
+        error: 'This player also belongs to another society, so their name/email can only be changed by them, or by that society’s admin.',
+        message: null,
+      });
+    }
 
     if (!name || !email) {
       return res.render('admin/players', { players, error: 'Name and email are both required.', message: null });
@@ -84,7 +131,20 @@ router.post(
   '/players/:id/reset-password',
   asyncHandler(async (req, res) => {
     const { password } = req.body;
-    const { rows: players } = await db.query('SELECT * FROM players ORDER BY name');
+    const societyId = res.locals.currentSociety.society_id;
+    const players = await loadSocietyPlayers(societyId);
+
+    const societyIds = await getPlayerSocietyIds(req.params.id);
+    if (!societyIds.includes(societyId)) {
+      return res.status(404).render('error', { message: 'Player not found.' });
+    }
+    if (societyIds.length > 1) {
+      return res.render('admin/players', {
+        players,
+        error: 'This player also belongs to another society, so their password can only be reset by them, or by that society’s admin.',
+        message: null,
+      });
+    }
 
     if (!password || password.length < 8) {
       return res.render('admin/players', { players, error: 'New password must be at least 8 characters.', message: null });
@@ -102,6 +162,10 @@ router.post(
 router.post(
   '/players/:id/handicap',
   asyncHandler(async (req, res) => {
+    const societyIds = await getPlayerSocietyIds(req.params.id);
+    if (!societyIds.includes(res.locals.currentSociety.society_id)) {
+      return res.status(404).render('error', { message: 'Player not found.' });
+    }
     const handicapIndex = parseFloat(req.body.handicapIndex);
     if (Number.isFinite(handicapIndex)) {
       await db.query('UPDATE players SET handicap_index = $1 WHERE id = $2', [handicapIndex, req.params.id]);
@@ -113,10 +177,17 @@ router.post(
 router.post(
   '/players/:id/toggle-admin',
   asyncHandler(async (req, res) => {
-    const { rows } = await db.query('SELECT * FROM players WHERE id = $1', [req.params.id]);
-    const player = rows[0];
-    if (player) {
-      await db.query('UPDATE players SET is_admin = $1 WHERE id = $2', [!player.is_admin, player.id]);
+    const societyId = res.locals.currentSociety.society_id;
+    const { rows } = await db.query('SELECT is_society_admin FROM society_members WHERE society_id = $1 AND player_id = $2', [
+      societyId,
+      req.params.id,
+    ]);
+    if (rows[0]) {
+      await db.query('UPDATE society_members SET is_society_admin = $1 WHERE society_id = $2 AND player_id = $3', [
+        !rows[0].is_society_admin,
+        societyId,
+        req.params.id,
+      ]);
     }
     res.redirect('/admin/players');
   })
@@ -125,7 +196,11 @@ router.post(
 router.post(
   '/players/:id/toggle-test-user',
   asyncHandler(async (req, res) => {
-    const { rows } = await db.query('SELECT * FROM players WHERE id = $1', [req.params.id]);
+    const societyIds = await getPlayerSocietyIds(req.params.id);
+    if (!societyIds.includes(res.locals.currentSociety.society_id)) {
+      return res.status(404).render('error', { message: 'Player not found.' });
+    }
+    const { rows } = await db.query('SELECT is_test_user FROM players WHERE id = $1', [req.params.id]);
     const player = rows[0];
     if (player) {
       await db.query('UPDATE players SET is_test_user = $1 WHERE id = $2', [!player.is_test_user, player.id]);
@@ -137,6 +212,10 @@ router.post(
 router.post(
   '/players/:id/delete',
   asyncHandler(async (req, res) => {
+    const societyIds = await getPlayerSocietyIds(req.params.id);
+    if (!societyIds.includes(res.locals.currentSociety.society_id)) {
+      return res.status(404).render('error', { message: 'Player not found.' });
+    }
     await db.query('DELETE FROM players WHERE id = $1', [req.params.id]);
     res.redirect('/admin/players');
   })
@@ -160,10 +239,25 @@ router.post(
   asyncHandler(async (req, res) => {
     const keepId = parseInt(req.body.keepPlayerId, 10);
     const mergeId = parseInt(req.body.mergePlayerId, 10);
-    const { rows: players } = await db.query('SELECT * FROM players ORDER BY name');
+    const societyId = res.locals.currentSociety.society_id;
+    const players = await loadSocietyPlayers(societyId);
 
     if (!Number.isFinite(keepId) || !Number.isFinite(mergeId) || keepId === mergeId) {
       return res.render('admin/players', { players, error: 'Choose two different players to merge.', message: null });
+    }
+
+    // Refuse unless both players belong to this society and nowhere else —
+    // merging pulls one player's entire identity into the other, which isn't
+    // something this admin should be able to do to (or with) a player who's
+    // also active in a society they don't administer.
+    const [keepSocietyIds, mergeSocietyIds] = await Promise.all([getPlayerSocietyIds(keepId), getPlayerSocietyIds(mergeId)]);
+    const bothOnlyHere = (ids) => ids.length === 1 && ids[0] === societyId;
+    if (!bothOnlyHere(keepSocietyIds) || !bothOnlyHere(mergeSocietyIds)) {
+      return res.render('admin/players', {
+        players,
+        error: 'One of these players also belongs to another society, so they can only be merged by that society’s admin.',
+        message: null,
+      });
     }
 
     const { rows: conflictRows } = await db.query(
@@ -465,7 +559,9 @@ router.get(
           JOIN courses co ON co.id = cc.course_id WHERE cc.competition_id = c.id) AS course_names,
         (SELECT COUNT(*) FROM rounds r WHERE r.competition_id = c.id) AS rounds_count
        FROM competitions c
-       ORDER BY c.comp_date DESC`
+       WHERE c.society_id = $1
+       ORDER BY c.comp_date DESC`,
+      [res.locals.currentSociety.society_id]
     );
     res.render('admin/competitions', { competitions, FORMAT_LABELS, TYPE_LABELS, message: req.query.updated ? 'Competition updated.' : null });
   })
@@ -665,20 +761,25 @@ router.post(
 
 // Resolves a { ids, all } request body to the actual competition ids to act
 // on — shared by both bulk routes below so "select all" and "select some"
-// go through the same validation.
-async function resolveCompetitionIds(body) {
+// go through the same validation. Always intersected against the admin's own
+// current society's competitions, whether "all" or an explicit id list came
+// in — otherwise an admin of one society could bulk-clear or bulk-delete
+// another society's competitions just by posting its ids directly.
+async function resolveCompetitionIds(body, societyId) {
   if (body.all) {
-    const { rows } = await db.query('SELECT id FROM competitions');
+    const { rows } = await db.query('SELECT id FROM competitions WHERE society_id = $1', [societyId]);
     return rows.map((r) => r.id);
   }
   const ids = Array.isArray(body.ids) ? body.ids.map((id) => parseInt(id, 10)).filter(Number.isFinite) : [];
-  return ids;
+  if (ids.length === 0) return ids;
+  const { rows } = await db.query('SELECT id FROM competitions WHERE society_id = $1 AND id = ANY($2)', [societyId, ids]);
+  return rows.map((r) => r.id);
 }
 
 router.post(
   '/competitions/bulk-clear-scores',
   asyncHandler(async (req, res) => {
-    const ids = await resolveCompetitionIds(req.body);
+    const ids = await resolveCompetitionIds(req.body, res.locals.currentSociety && res.locals.currentSociety.society_id);
     if (ids.length === 0) return res.status(400).json({ error: 'No competitions selected.' });
 
     await db.withTransaction(async (client) => {
@@ -702,7 +803,7 @@ router.post(
 router.post(
   '/competitions/bulk-delete',
   asyncHandler(async (req, res) => {
-    const ids = await resolveCompetitionIds(req.body);
+    const ids = await resolveCompetitionIds(req.body, res.locals.currentSociety && res.locals.currentSociety.society_id);
     if (ids.length === 0) return res.status(400).json({ error: 'No competitions selected.' });
 
     await db.withTransaction(async (client) => {
@@ -743,7 +844,16 @@ router.post(
   asyncHandler(async (req, res) => {
     const value = parseFloat(req.body.defaultHandicap);
     const defaultHandicap = Number.isFinite(value) ? value : 28.0;
-    await db.query('UPDATE players SET handicap_index = $1', [defaultHandicap]);
+    // Handicap Index is a global field on players (shared across every
+    // society a player belongs to), but this action itself is scoped to only
+    // the admin's own current society's members — otherwise a society admin
+    // could wipe the handicap of every player on the whole deployment,
+    // including ones who've never had anything to do with their society.
+    await db.query(
+      `UPDATE players SET handicap_index = $1
+       WHERE id IN (SELECT player_id FROM society_members WHERE society_id = $2)`,
+      [defaultHandicap, res.locals.currentSociety && res.locals.currentSociety.society_id]
+    );
     res.redirect('/admin/data?resetHandicaps=1');
   })
 );
