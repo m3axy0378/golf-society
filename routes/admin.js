@@ -510,9 +510,18 @@ router.post(
     let compId;
     await db.withTransaction(async (client) => {
       const { rows } = await client.query(
-        `INSERT INTO competitions (name, comp_date, format, type, entry_fee_enabled, entry_fee_amount, entry_fee_link)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-        [name.trim(), compDate, format, type, entryFeeEnabled, entryFeeAmount, entryFeeLink]
+        `INSERT INTO competitions (name, comp_date, format, type, entry_fee_enabled, entry_fee_amount, entry_fee_link, society_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        [
+          name.trim(),
+          compDate,
+          format,
+          type,
+          entryFeeEnabled,
+          entryFeeAmount,
+          entryFeeLink,
+          res.locals.currentSociety ? res.locals.currentSociety.society_id : null,
+        ]
       );
       compId = rows[0].id;
       for (const courseId of courseIds) {

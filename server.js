@@ -118,13 +118,38 @@ app.use(
 app.use(
   asyncHandler(async (req, res, next) => {
     res.locals.currentPlayer = null;
+    res.locals.mySocieties = [];
+    res.locals.currentSociety = null;
     const settingsPromise = db.getSettings({ society_name: 'Golf Society', pairing_sheet_enabled: 'true' });
     if (req.session.playerId) {
       const { rows } = await db.query(
         'SELECT id, name, email, handicap_index, is_admin, dashboard_intro_seen, is_test_user, handicap_confirmed_by_player FROM players WHERE id = $1',
         [req.session.playerId]
       );
-      res.locals.currentPlayer = rows[0] || null;
+      const player = rows[0] || null;
+      if (player) {
+        // Every society this player belongs to, and which one is "current" —
+        // from the session if they're still a member of it, else whichever
+        // comes first. Kept as a separate is_society_admin field alongside the
+        // player's global is_admin for now rather than merged into it — until
+        // routes/authMiddleware.js's requireAdmin actually switches to reading
+        // it, this has no behavioral effect (every existing player's society
+        // membership was backfilled with is_society_admin = their is_admin).
+        const { rows: memberships } = await db.query(
+          `SELECT sm.society_id, sm.is_society_admin, s.name AS society_name
+           FROM society_members sm
+           JOIN societies s ON s.id = sm.society_id
+           WHERE sm.player_id = $1
+           ORDER BY sm.joined_at ASC`,
+          [player.id]
+        );
+        res.locals.mySocieties = memberships;
+        let current = memberships.find((m) => m.society_id === req.session.currentSocietyId);
+        if (!current && memberships.length > 0) current = memberships[0];
+        req.session.currentSocietyId = current ? current.society_id : null;
+        res.locals.currentSociety = current || null;
+        res.locals.currentPlayer = { ...player, is_society_admin: current ? current.is_society_admin : false };
+      }
       // Keep the session's admin flag in sync with the database on every
       // request — it's only ever set once at login otherwise, so a player
       // promoted/demoted after logging in would see admin controls (driven by
