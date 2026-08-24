@@ -196,6 +196,53 @@ test('POST /societies/switch only switches to a society you actually belong to',
   assert.equal(app.session.currentSocietyId, undefined);
 });
 
+test('POST /societies/delete is refused for a non-admin of the current society', async (t) => {
+  const nonAdmin = { society_id: 5, society_name: 'Mine', is_society_admin: false };
+  const app = await startTestApp({ mySocieties: [nonAdmin], currentSociety: nonAdmin });
+  t.after(() => app.close());
+
+  const queryMock = makeQueryMock([]);
+  t.mock.method(db, 'query', queryMock);
+
+  const res = await fetch(`${app.baseUrl}/societies/delete`, { method: 'POST' });
+  assert.equal(res.status, 403);
+  assert.equal(queryMock.calls.length, 0);
+});
+
+test('POST /societies/delete is refused while the society still has competitions on record', async (t) => {
+  const admin = { society_id: 5, society_name: 'Mine', is_society_admin: true };
+  const app = await startTestApp({ mySocieties: [admin], currentSociety: admin });
+  t.after(() => app.close());
+
+  const queryMock = makeQueryMock([{ match: 'SELECT COUNT(*)::int AS c FROM competitions', result: { rows: [{ c: 2 }] } }]);
+  t.mock.method(db, 'query', queryMock);
+
+  const res = await fetch(`${app.baseUrl}/societies/delete`, { method: 'POST' });
+  assert.equal(res.status, 400);
+  assert.ok(!queryMock.calls.some((c) => c.text.includes('DELETE FROM societies')));
+});
+
+test('POST /societies/delete removes an empty society and clears it from the session', async (t) => {
+  const admin = { society_id: 5, society_name: 'Mine', is_society_admin: true };
+  const app = await startTestApp({ mySocieties: [admin], currentSociety: admin });
+  t.after(() => app.close());
+  app.session.currentSocietyId = 5;
+
+  const queryMock = makeQueryMock([
+    { match: 'SELECT COUNT(*)::int AS c FROM competitions', result: { rows: [{ c: 0 }] } },
+    { match: 'DELETE FROM societies WHERE id', result: { rows: [] } },
+  ]);
+  t.mock.method(db, 'query', queryMock);
+
+  const res = await fetch(`${app.baseUrl}/societies/delete`, { method: 'POST', redirect: 'manual' });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), '/societies');
+  assert.equal(app.session.currentSocietyId, null);
+
+  const deleteCall = queryMock.calls.find((c) => c.text.includes('DELETE FROM societies WHERE id'));
+  assert.deepEqual(deleteCall.params, [5]);
+});
+
 test('GET /join/:code with an unknown code 404s', async (t) => {
   const app = await startTestApp({ mySocieties: [] });
   t.after(() => app.close());

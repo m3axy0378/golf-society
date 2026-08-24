@@ -126,6 +126,33 @@ router.post(
   })
 );
 
+// Society-admin only, and only ever for the admin's own current society —
+// same reach limits as everything else here. Deliberately restricted to
+// societies with no competitions on record: this is for cleaning up an
+// abandoned or created-by-mistake society, never for destroying real
+// history. society_members cascades automatically (ON DELETE CASCADE); a
+// society with any competitions has to have those dealt with first.
+router.post(
+  '/societies/delete',
+  requireLogin,
+  asyncHandler(async (req, res) => {
+    if (!res.locals.currentPlayer.is_society_admin) {
+      return res.status(403).render('error', { message: 'You need to be an admin to do that.' });
+    }
+    const societyId = res.locals.currentSociety.society_id;
+    const { rows } = await db.query('SELECT COUNT(*)::int AS c FROM competitions WHERE society_id = $1', [societyId]);
+    if (rows[0].c > 0) {
+      return res.status(400).render('error', {
+        message: "This society still has competitions on record — it can't be deleted while any exist.",
+      });
+    }
+
+    await db.query('DELETE FROM societies WHERE id = $1', [societyId]);
+    req.session.currentSocietyId = null;
+    res.redirect('/societies');
+  })
+);
+
 // GET is side-effect-free on purpose (it's what a clicked link hits first):
 // stash the code and send a logged-out visitor to sign up; show an already-
 // logged-in visitor a confirm screen, or just switch them over if they're

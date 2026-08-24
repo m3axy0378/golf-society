@@ -26,6 +26,12 @@
               <input type="hidden" name="societyId" value="<%= m.society_id %>">
               <button type="submit" class="btn-secondary" style="padding:0.25rem 0.6rem;">Switch to this one</button>
             </form>
+          <% } else if (m.is_society_admin) { %>
+            <form method="POST" action="/societies/delete"
+              onsubmit="return confirm('Delete ' + <%- JSON.stringify(m.society_name) %> + '? This can\'t be undone — only works while it has no competitions.');">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" class="btn-danger" style="padding:0.25rem 0.6rem;">Delete society</button>
+            </form>
           <% } %>
         </li>
       <% }) %>
