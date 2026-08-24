@@ -32,6 +32,8 @@ async function startTestApp(currentPlayer) {
   app.use((req, res, next) => {
     req.session = { playerId: currentPlayer.id };
     res.locals.currentPlayer = currentPlayer;
+    res.locals.currentSociety = { society_id: 1, is_society_admin: false, society_name: 'Test Golf Society' };
+    res.locals.mySocieties = [res.locals.currentSociety];
     res.locals.societyName = 'Test Golf Society';
     res.locals.vapidPublicKey = null;
     res.locals.baseUrl = 'http://localhost';

@@ -35,7 +35,7 @@ function makeQueryMock(rules) {
 // Spins up a throwaway Express app with the real view engine and main router
 // mounted, plus the same res.locals a logged-in request gets from server.js,
 // on a random free port.
-async function startTestApp({ isAdmin = false } = {}) {
+async function startTestApp({ isAdmin = false, extraSocieties = [] } = {}) {
   const app = express();
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '..', 'views'));
@@ -58,7 +58,7 @@ async function startTestApp({ isAdmin = false } = {}) {
       society_name: 'Test Golf Society',
       invite_code: 'test-invite-code',
     };
-    res.locals.mySocieties = [res.locals.currentSociety];
+    res.locals.mySocieties = [res.locals.currentSociety, ...extraSocieties];
     res.locals.societyName = 'Test Golf Society';
     res.locals.vapidPublicKey = null;
     res.locals.baseUrl = 'http://localhost';
@@ -118,6 +118,49 @@ test('/dashboard lists a competition by format only, not its course names', asyn
   // you've clicked into the competition itself.
   const compQuery = queryMock.calls.find((c) => c.text.includes('rounds_count'));
   assert.ok(!compQuery.text.includes('course_names'));
+});
+
+test('the topbar has no society chip for a player in only one society', async (t) => {
+  const app = await startTestApp();
+  t.after(() => app.close());
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      { match: 'rounds_count', result: { rows: [] } },
+      { match: 'FROM entries WHERE player_id', result: { rows: [] } },
+      { match: "type != 'sprint'", result: { rows: [] } },
+      { match: 'FROM rounds r JOIN players p ON p.id = r.player_id', result: { rows: [] } },
+      { match: 'FROM players WHERE is_test_user', result: { rows: [] } },
+    ])
+  );
+
+  const res = await fetch(`${app.baseUrl}/dashboard`);
+  const html = await res.text();
+  assert.doesNotMatch(html, /society-chip/);
+});
+
+test('the topbar shows the current society\'s name as a switcher chip for a player in more than one', async (t) => {
+  const app = await startTestApp({ extraSocieties: [{ society_id: 2, is_society_admin: false, society_name: 'Other Society' }] });
+  t.after(() => app.close());
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      { match: 'rounds_count', result: { rows: [] } },
+      { match: 'FROM entries WHERE player_id', result: { rows: [] } },
+      { match: "type != 'sprint'", result: { rows: [] } },
+      { match: 'FROM rounds r JOIN players p ON p.id = r.player_id', result: { rows: [] } },
+      { match: 'FROM players WHERE is_test_user', result: { rows: [] } },
+    ])
+  );
+
+  const res = await fetch(`${app.baseUrl}/dashboard`);
+  const html = await res.text();
+  assert.match(html, /class="society-chip"[^>]*href="\/societies"/);
+  assert.match(html, /Test Golf Society/);
 });
 
 test('dashboard Order of Merit widget shows a not-yet-played player on the board, not the old "join" prompt', async (t) => {

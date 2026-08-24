@@ -36,6 +36,11 @@
     </a>
     <% if (currentPlayer) { %>
       <div class="topbar-right">
+        <% if (mySocieties.length > 1 && currentSociety) { %>
+          <a class="society-chip" href="/societies" title="Switch society">
+            <%= currentSociety.society_name %>
+          </a>
+        <% } %>
         <span class="season-chip">Season <%= new Date().getFullYear().toString().slice(-2) %></span>
         <nav class="app-nav" aria-label="Main">
           <% navItems.forEach((item) => { %>

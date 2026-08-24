@@ -127,6 +127,29 @@ h1, h2, h3, .brand, .logo-wordmark {
   white-space: nowrap;
 }
 
+/* Only shown to players in more than one society (see header.ejs) — tells
+   them which one they're currently viewing, and doubles as a shortcut to
+   /societies to switch. Not shown at all for the (still overwhelmingly
+   common) single-society case, since it'd just repeat the Tee League brand
+   name next to itself. */
+.society-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 150px;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--color-navy-2);
+  border: 1px solid var(--border-subtle);
+  color: var(--color-gold-light);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-decoration: none;
+}
+.society-chip:hover { border-color: var(--color-gold); text-decoration: none; }
+
 /* ---- Shared app navigation --------------------------------------------
    A single 4-item nav: a fixed bottom tab bar (icon + label) below 700px,
    an inline underlined nav in the app bar at 700px and up. Replaces the
