@@ -333,6 +333,36 @@ BEGIN
     UPDATE competitions SET society_id = default_society_id WHERE society_id IS NULL;
   END IF;
 END $$;
+
+-- Both created_by_*_id columns above are provenance-only (never used to scope
+-- a read — see the comments where they're declared) and were missing an
+-- ON DELETE clause, so Postgres defaulted to blocking the delete outright:
+-- removing a player who'd ever created a society (or, if a "delete a
+-- society" tool is ever built, a society that had ever added a course)
+-- failed with a raw foreign-key-violation 500 instead of just clearing the
+-- reference. Looked up by (from-table, to-table) rather than a hardcoded
+-- constraint name, since that's not guaranteed to match Postgres's
+-- auto-generated default across every environment this has run in.
+DO $$
+DECLARE
+  con_name TEXT;
+BEGIN
+  SELECT conname INTO con_name FROM pg_constraint
+    WHERE conrelid = 'societies'::regclass AND confrelid = 'players'::regclass AND contype = 'f';
+  IF con_name IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE societies DROP CONSTRAINT %I', con_name);
+  END IF;
+  ALTER TABLE societies ADD CONSTRAINT societies_created_by_player_id_fkey
+    FOREIGN KEY (created_by_player_id) REFERENCES players(id) ON DELETE SET NULL;
+
+  SELECT conname INTO con_name FROM pg_constraint
+    WHERE conrelid = 'courses'::regclass AND confrelid = 'societies'::regclass AND contype = 'f';
+  IF con_name IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE courses DROP CONSTRAINT %I', con_name);
+  END IF;
+  ALTER TABLE courses ADD CONSTRAINT courses_created_by_society_id_fkey
+    FOREIGN KEY (created_by_society_id) REFERENCES societies(id) ON DELETE SET NULL;
+END $$;
 `;
 
 let readyPromise = null;
