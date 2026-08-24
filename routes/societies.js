@@ -10,14 +10,39 @@ function generateInviteCode() {
   return crypto.randomBytes(6).toString('hex');
 }
 
-// Doubles as the "create or join a society" landing page (for a player who
-// belongs to zero — see server.js's gate) and the "my societies" hub (switch
-// between, or add another) for everyone else.
+// Word-of-mouth signups (no invite code) get a public list of every society
+// on the deployment to join, instead of a "create your own" option — that's
+// reserved for players who already belong to at least one (see
+// canCreateSociety below). Only fetched when actually needed.
+async function loadJoinableSocieties() {
+  const { rows } = await db.query('SELECT id, name, invite_code FROM societies ORDER BY name');
+  return rows;
+}
+
+// A brand-new player joins an existing society (from the list above or a
+// code); starting a new one of their own is something only an existing
+// member of *some* society can do from their own Societies page — except as
+// a bootstrap fallback if literally no society exists yet to join, which
+// would otherwise be a dead end.
+function canCreateSociety(mySocieties, allSocieties) {
+  return mySocieties.length > 0 || allSocieties.length === 0;
+}
+
+// Doubles as the "join a society" landing page (for a player who belongs to
+// zero — see server.js's gate) and the "my societies" hub (switch between,
+// or add another) for everyone else.
 router.get(
   '/societies',
   requireLogin,
   asyncHandler(async (req, res) => {
-    res.render('societies', { mySocieties: res.locals.mySocieties, currentSociety: res.locals.currentSociety, error: null });
+    const allSocieties = res.locals.mySocieties.length === 0 ? await loadJoinableSocieties() : [];
+    res.render('societies', {
+      mySocieties: res.locals.mySocieties,
+      currentSociety: res.locals.currentSociety,
+      allSocieties,
+      canCreate: canCreateSociety(res.locals.mySocieties, allSocieties),
+      error: null,
+    });
   })
 );
 
@@ -25,11 +50,19 @@ router.post(
   '/societies',
   requireLogin,
   asyncHandler(async (req, res) => {
+    const allSocieties = res.locals.mySocieties.length === 0 ? await loadJoinableSocieties() : [];
+    const canCreate = canCreateSociety(res.locals.mySocieties, allSocieties);
+    if (!canCreate) {
+      return res.status(403).render('error', { message: 'Join an existing society first — you can create your own from there.' });
+    }
+
     const name = (req.body.name || '').trim();
     if (!name) {
       return res.render('societies', {
         mySocieties: res.locals.mySocieties,
         currentSociety: res.locals.currentSociety,
+        allSocieties,
+        canCreate,
         error: 'Please enter a name for your society.',
       });
     }

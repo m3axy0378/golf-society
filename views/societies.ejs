@@ -4,8 +4,7 @@
   <h1 class="comp-title" style="text-transform:none;font-size:1.75rem;">Societies</h1>
   <% if (mySocieties.length === 0) { %>
     <p class="comp-meta">
-      You're not part of a society yet. Create one to start running your own competitions, or join one with an
-      invite link or code from its admin.
+      You're not part of a society yet. Pick one below to join, or enter a code if an admin gave you one.
     </p>
   <% } else { %>
     <p class="comp-meta">Switch between the societies you belong to, or add another.</p>
@@ -34,16 +33,36 @@
   </div>
 <% } %>
 
-<div class="card" style="max-width:480px;">
-  <h2 class="mt-0" style="font-size:1.05rem;">Create a new society</h2>
-  <form class="stacked" method="POST" action="/societies">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <label>Society name <input type="text" name="name" required autofocus></label>
-    <button type="submit">Create society</button>
-  </form>
-  <p class="muted" style="font-size:0.85rem;">You'll be its first admin, with your own competitions, leaderboards and
-    Order of Merit — separate from any other society you're in.</p>
-</div>
+<% if (mySocieties.length === 0) { %>
+  <div class="card" style="max-width:480px;">
+    <h2 class="mt-0" style="font-size:1.05rem;">Join a society</h2>
+    <% if (allSocieties.length === 0) { %>
+      <p class="muted" style="font-size:0.85rem;">No societies exist yet.</p>
+    <% } else { %>
+      <ul class="list-plain">
+        <% allSocieties.forEach(s => { %>
+          <li style="display:flex;justify-content:space-between;align-items:center;">
+            <span><%= s.name %></span>
+            <a class="btn-secondary" style="padding:0.25rem 0.6rem;" href="/join/<%= s.invite_code %>">Join</a>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+<% } %>
+
+<% if (canCreate) { %>
+  <div class="card" style="max-width:480px;">
+    <h2 class="mt-0" style="font-size:1.05rem;">Create a new society</h2>
+    <form class="stacked" method="POST" action="/societies">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Society name <input type="text" name="name" required autofocus></label>
+      <button type="submit">Create society</button>
+    </form>
+    <p class="muted" style="font-size:0.85rem;">You'll be its first admin, with your own competitions, leaderboards and
+      Order of Merit — separate from any other society you're in.</p>
+  </div>
+<% } %>
 
 <div class="card" style="max-width:480px;">
   <h2 class="mt-0" style="font-size:1.05rem;">Join with a code</h2>

@@ -52,19 +52,45 @@ async function startTestApp({ loggedIn = true, mySocieties = [], currentSociety 
   return { baseUrl: `http://127.0.0.1:${port}`, close: () => new Promise((r) => server.close(r)), session };
 }
 
-test('GET /societies with no memberships shows create/join forms, not a switch list', async (t) => {
+test('GET /societies with no memberships shows a public join list, not a create form', async (t) => {
   const app = await startTestApp({ mySocieties: [] });
   t.after(() => app.close());
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([
+      {
+        match: 'FROM societies ORDER BY name',
+        result: { rows: [{ id: 9, name: 'Cathkin Crew', invite_code: 'abc123' }] },
+      },
+    ])
+  );
 
   const res = await fetch(`${app.baseUrl}/societies`);
   assert.equal(res.status, 200);
   const html = await res.text();
-  assert.match(html, /Create a new society/);
+  assert.match(html, /Cathkin Crew/);
+  assert.match(html, /href="\/join\/abc123"/);
   assert.match(html, /Join with a code/);
+  assert.doesNotMatch(html, /Create a new society/);
   assert.doesNotMatch(html, /My societies/);
 });
 
-test('GET /societies with one membership shows it but no switch button for the current one', async (t) => {
+test('GET /societies with no memberships and nothing to join yet falls back to showing a create form', async (t) => {
+  const app = await startTestApp({ mySocieties: [] });
+  t.after(() => app.close());
+
+  t.mock.method(db, 'query', makeQueryMock([{ match: 'FROM societies ORDER BY name', result: { rows: [] } }]));
+
+  const res = await fetch(`${app.baseUrl}/societies`);
+  assert.equal(res.status, 200);
+  const html = await res.text();
+  assert.match(html, /No societies exist yet/);
+  assert.match(html, /Create a new society/);
+});
+
+test('GET /societies with one membership shows it, a create form, but no switch button for the current one', async (t) => {
   const society = { society_id: 5, society_name: 'Cathkin Crew', is_society_admin: true };
   const app = await startTestApp({ mySocieties: [society], currentSociety: society });
   t.after(() => app.close());
@@ -73,11 +99,13 @@ test('GET /societies with one membership shows it but no switch button for the c
   assert.equal(res.status, 200);
   const html = await res.text();
   assert.match(html, /Cathkin Crew/);
+  assert.match(html, /Create a new society/);
   assert.doesNotMatch(html, /Switch to this one/);
 });
 
-test('POST /societies creates the society, adds the creator as its admin, and makes it current', async (t) => {
-  const app = await startTestApp({ mySocieties: [] });
+test('POST /societies creates the society, adds the creator as its admin, and makes it current, for an existing member', async (t) => {
+  const mine = { society_id: 5, society_name: 'Mine', is_society_admin: true };
+  const app = await startTestApp({ mySocieties: [mine], currentSociety: mine });
   t.after(() => app.close());
 
   const clientQuery = makeQueryMock([
@@ -101,8 +129,31 @@ test('POST /societies creates the society, adds the creator as its admin, and ma
   assert.ok(memberInsert.text.includes('is_society_admin) VALUES ($1, $2, TRUE)'));
 });
 
-test('POST /societies rejects a blank name without touching the database', async (t) => {
+test('POST /societies is refused for a zero-society player when other societies already exist to join', async (t) => {
   const app = await startTestApp({ mySocieties: [] });
+  t.after(() => app.close());
+
+  t.mock.method(
+    db,
+    'query',
+    makeQueryMock([{ match: 'FROM societies ORDER BY name', result: { rows: [{ id: 9, name: 'Cathkin Crew', invite_code: 'x' }] } }])
+  );
+  const withTransactionMock = t.mock.method(db, 'withTransaction', async () => {
+    throw new Error('should not start a transaction — this player should not be able to create one yet');
+  });
+
+  const res = await fetch(`${app.baseUrl}/societies`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'name=New+Society',
+  });
+  assert.equal(res.status, 403);
+  assert.equal(withTransactionMock.mock.calls.length, 0);
+});
+
+test('POST /societies rejects a blank name without touching the database', async (t) => {
+  const mine = { society_id: 5, society_name: 'Mine', is_society_admin: true };
+  const app = await startTestApp({ mySocieties: [mine], currentSociety: mine });
   t.after(() => app.close());
 
   const withTransactionMock = t.mock.method(db, 'withTransaction', async () => {
