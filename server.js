@@ -150,6 +150,14 @@ app.use(
         req.session.currentSocietyId = current ? current.society_id : null;
         res.locals.currentSociety = current || null;
         res.locals.currentPlayer = { ...player, is_society_admin: current ? current.is_society_admin : false };
+      } else {
+        // A stale session for a player that no longer exists — most likely
+        // they deleted their own account while still logged in, or an admin
+        // removed them mid-session. Clear it so requireLogin (and GET
+        // /login's own already-logged-in check) correctly treat this as
+        // logged out, instead of every route downstream getting a truthy
+        // session.playerId paired with a null currentPlayer/currentSociety.
+        req.session.playerId = null;
       }
       // Keep the session's admin flag in sync with the database on every
       // request — it's only ever set once at login otherwise, so a player
